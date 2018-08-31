@@ -1,0 +1,12 @@
+.vscode
+build/
+*.asv
+*.jpg
+*.png
+*.obj
+*.mtl
+
+!depth.png
+!apple_5_4_220.png
+
+*__ignore__*
