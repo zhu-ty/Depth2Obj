@@ -1,7 +1,7 @@
 clear;
 clc;
-Id = imread('depth.png');
-GenObj(Id,'apple_5_4_220.png','test',2);
+Id = imread('desk/output_depth_hole_filled.png');
+GenObj(Id,'desk/desk_1_82.png','desk/origin',2);
 
 
 % Id = imread('depth.png');

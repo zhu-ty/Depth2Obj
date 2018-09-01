@@ -5,7 +5,14 @@ function [] = GenObj(depth, color_path, objname, t)
     x_max =  size(Id,2) / t;
 
     file = fopen([objname,'.obj'],'w');
-    fprintf(file,['mtllib ',objname,'.mtl\nusemtl 01___Default\n']);
+    idx = strfind(objname,'/');
+    if(~isempty(idx))
+        objname_end = objname(idx(end)+1:end);
+    else
+        objname_end = objname;
+    end
+    
+    fprintf(file,['mtllib ',objname_end,'.mtl\nusemtl 01___Default\n']);
     for x = 1:t:size(Id,2)
         for y = 1:t:size(Id,1)
             fprintf(file,'v %f %f %f\n',x,1.0 - y,-1 * double(Id(y,x)));
@@ -32,6 +39,13 @@ function [] = GenObj(depth, color_path, objname, t)
     end
     fclose(file);
     
+    idx = strfind(color_path,'/');
+    if(~isempty(idx))
+        color_path_end = color_path(idx(end)+1:end);
+    else
+        color_path_end = color_path;
+    end
+    
     file = fopen([objname,'.mtl'],'w');
     fprintf(file,['newmtl 01___Default \n',...
     'Ns 10.0000\n',...
@@ -44,7 +58,7 @@ function [] = GenObj(depth, color_path, objname, t)
     'Kd 0.5882 0.5882 0.5882\n',...
     'Ks 0.0000 0.0000 0.0000\n',...
     'Ke 0.0000 0.0000 0.0000\n',...
-    'map_Ka ',color_path,'\n',...
-    'map_Kd ',color_path,'\n']);
+    'map_Ka ',color_path_end,'\n',...
+    'map_Kd ',color_path_end,'\n']);
 end
 
