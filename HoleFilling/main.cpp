@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 	I = cv::imread(img_p, cv::IMREAD_UNCHANGED);
 
 	R = cv::imread(mask_p, cv::IMREAD_UNCHANGED);
-	cv::inpaint(I, R, OPT, 5, cv::INPAINT_NS);
+	cv::inpaint(I, R, OPT, 3, cv::INPAINT_NS);
 
 	//I.convertTo(IF, CV_32FC1);
 	//cv::log(IF, IF);

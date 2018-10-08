@@ -6,6 +6,7 @@ build/
 *.obj
 *.mtl
 *.exe
+*.rar
 
 !depth.png
 !apple_5_4_220.png

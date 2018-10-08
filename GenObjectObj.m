@@ -1,8 +1,8 @@
 function [] = GenObjectObj(depth, color_path, objname, t,object_mask, depth_threshold)
 
 Id = depth;
-    y_max = size(Id,1) / t;
-    x_max =  size(Id,2) / t;
+    y_max = size(1:t:size(Id,1),2);
+    x_max = size(1:t:size(Id,2),2);
 
     file = fopen([objname,'.obj'],'w');
     idx = strfind(objname,'/');
