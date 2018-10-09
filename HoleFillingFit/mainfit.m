@@ -4,6 +4,8 @@ clc;
 mask = imread('../desk/mask_toinpaint.png');
 depth = imread('../desk/depth_all.png');
 
+depth_dst = double(depth);
+
 w = size(mask,2);
 h = size(mask,1);
 
@@ -25,7 +27,21 @@ for i = 1:object_num
     %ginput(1);
     
     data = get_mask_datas(depth,A4);
+    
+    data2 = double(data);
+    xxn = data2(:,1:2);
+    yyn = data2(:,3);
+    %try 1/d=ax+by+c?
+    yyn1 = 1 ./ yyn;
+    r = regress(yyn1,[xxn,ones(size(xxn,1),1)]);
+    
+    depth_dst = set_mask_datas(depth_dst, mask_split(:,:,i), r);
 end
+
+figure(1);imshow(depth .* uint16(~mask),[]);
+figure(2);imshow(depth_dst,[]);
+
+
 
 
 
