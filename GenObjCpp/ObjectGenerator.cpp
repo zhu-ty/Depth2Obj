@@ -1,37 +1,6 @@
 #include "ObjectGenerator.h"
 
-int ObjectGenerator::CalculateArea(int i, int j, int updown, int width_p, int height_p, std::vector<Tri>& list_all, std::vector<Tri*>& list_this)
-{
-	if (i < 0 || j < 0 || i >= width_p - 1 || j >= height_p - 1)
-		return 0;
-	int ret = 0;
-	Tri *t;
-	if (updown == 0)
-		t = &list_all[(i * (height_p - 1) + j) * 2];
-	else
-		t = &list_all[(i * (height_p - 1) + j) * 2 + 1];
-	if (t->hole == true && t->areaCalculated == 0)
-	{
-		t->areaCalculated = -1;
-		list_this.push_back(t);
-		ret += 1;
-		if (updown == 0)
-		{
-			ret += CalculateArea(i, j, 1, width_p, height_p, list_all, list_this);
-			ret += CalculateArea(i, j - 1, 1, width_p, height_p, list_all, list_this);
-			ret += CalculateArea(i + 1, j, 1, width_p, height_p, list_all, list_this);
-		}
-		else
-		{
-			ret += CalculateArea(i, j, 0, width_p, height_p, list_all, list_this);
-			ret += CalculateArea(i - 1, j, 0, width_p, height_p, list_all, list_this);
-			ret += CalculateArea(i, j + 1, 0, width_p, height_p, list_all, list_this);
-		}
-	}
-	return ret;
-}
-
-int ObjectGenerator::CalculateArea(int c, int r, int updown, std::vector<Tri*>& list_this, mesh &m)
+int ObjectGenerator::CalculateAreaStackOverFlow(int c, int r, int updown, std::vector<Tri*>& list_this, mesh &m)
 {
 	if (c < 0 || r < 0 || c >= m.col() - 1 || r >= m.row() - 1)
 		return 0;
@@ -45,19 +14,69 @@ int ObjectGenerator::CalculateArea(int c, int r, int updown, std::vector<Tri*>& 
 		ret += 1;
 		if (updown == 0)
 		{
-			ret += CalculateArea(c, r, 1, list_this,m);
-			ret += CalculateArea(c, r - 1, 1, list_this, m);
-			ret += CalculateArea(c + 1, r, 1, list_this, m);
+			ret += CalculateAreaStackOverFlow(c, r, 1, list_this, m);
+			ret += CalculateAreaStackOverFlow(c, r - 1, 1, list_this, m);
+			ret += CalculateAreaStackOverFlow(c + 1, r, 1, list_this, m);
 		}
 		else
 		{
-			ret += CalculateArea(c, r, 0, list_this, m);
-			ret += CalculateArea(c - 1, r, 0, list_this, m);
-			ret += CalculateArea(c, r + 1, 0, list_this, m);
+			ret += CalculateAreaStackOverFlow(c, r, 0, list_this, m);
+			ret += CalculateAreaStackOverFlow(c - 1, r, 0, list_this, m);
+			ret += CalculateAreaStackOverFlow(c, r + 1, 0, list_this, m);
 		}
 	}
 	return ret;
 }
+
+int ObjectGenerator::CalculateArea(int c, int r, int updown, std::vector<Tri*>& list_this, mesh &m)
+{
+	Tri *t;
+	if ((t = getTri(c,r,updown,m)) == nullptr)
+		return 0;
+	int ret = 0;
+	std::vector<Tri*> list_stack;
+	list_this.push_back(t);
+	list_stack.push_back(t);
+	while (list_stack.size() > 0)
+	{
+		Tri* tri_back = list_stack.back();
+		tri_back->areaCalculated = -1;
+		Tri* child;
+		if ((child = getTri(tri_back->c(), tri_back->r(), 1 - tri_back->updown(), m)) != nullptr)
+		{
+			list_stack.push_back(child);
+			list_this.push_back(child);
+			continue;
+		}
+		if ((child = getTri(tri_back->c() + ((tri_back->updown() == 0) ? 1 : -1), tri_back->r(), 1 - tri_back->updown(), m)) != nullptr)
+		{
+			list_stack.push_back(child);
+			list_this.push_back(child);
+			continue;
+		}
+		if ((child = getTri(tri_back->c(), tri_back->r() - ((tri_back->updown() == 0) ? 1 : -1), 1 - tri_back->updown(), m)) != nullptr)
+		{
+			list_stack.push_back(child);
+			list_this.push_back(child);
+			continue;
+		}
+		ret++;
+		list_stack.pop_back();
+	}
+	return ret;
+}
+
+ObjectGenerator::Tri * ObjectGenerator::getTri(int c, int r, int updown, mesh & m)
+{
+	if (c < 0 || r < 0 || c >= m.col() - 1 || r >= m.row() - 1)
+		return nullptr;
+	Tri *t;
+	t = &(m.meshTRI[m.mapTriangle(c, r, updown)]);
+	if (t->hole == true && t->areaCalculated == 0)
+		return t;
+	return nullptr;
+}
+
 
 int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, int pieceSize, double depthSeg, int minimumArea)
 {

@@ -70,6 +70,18 @@ private:
 			hole = false;
 			areaCalculated = false;
 		}
+		int updown()
+		{
+			return (pts[1].idxPos.x == pts[0].idxPos.x) ? 1 : 0;
+		}
+		int c()
+		{
+			return pts[0].idxPos.x;
+		}
+		int r()
+		{
+			return pts[0].idxPos.y;
+		}
 		Pt pts[3];
 		bool hole;
 		int areaCalculated; //0 -> not caculated, num -> hole area size, -1 -> calculating
@@ -153,9 +165,11 @@ private:
 	v     >1
 	1----->2
 	*/
-	static int CalculateArea(int i, int j, int updown, int width_p, int height_p, std::vector<Tri> &list_all, std::vector<Tri*> &list_this);
+	static int CalculateAreaStackOverFlow(int c, int r, int updown, std::vector<Tri*> &list_this, mesh &m);
 
 	static int CalculateArea(int c, int r, int updown, std::vector<Tri*> &list_this, mesh &m);
+
+	static Tri* getTri(int c, int r, int updown, mesh &m);
 
 	std::vector<mesh> meshs;
 	int global_id = 1;
