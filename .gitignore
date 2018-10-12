@@ -7,8 +7,9 @@ build/
 *.mtl
 *.exe
 *.rar
+*Single*.txt
 
-!depth.png
+!depth_apple.png
 !apple_5_4_220.png
 
 *__ignore__*
