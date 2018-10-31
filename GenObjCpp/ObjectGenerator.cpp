@@ -78,16 +78,16 @@ ObjectGenerator::Tri * ObjectGenerator::getTri(int c, int r, int updown, mesh & 
 }
 
 
-int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, int pieceSize, double depthSeg, int minimumArea)
+int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, int pieceSize, double depthSeg, int minimumArea, double depthDiv)
 {
 	cv::Mat c, d;
 	c = cv::imread(colorFile);
 	d = cv::imread(depthFile, CV_LOAD_IMAGE_UNCHANGED);
-	this->AddMesh(c, d, pieceSize, depthSeg, minimumArea);
+	this->AddMesh(c, d, pieceSize, depthSeg, minimumArea, depthDiv);
 	return 0;
 }
 
-int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double depthSeg, int minimumArea)
+int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double depthSeg, int minimumArea, double depthDiv)
 {
 	if (depth.type() != CV_16UC1)
 	{
@@ -103,7 +103,7 @@ int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double
 			t_pt.imgPos = cv::Point(m.mapImage(i), m.mapImage(j));
 			t_pt.idxPos = cv::Point(i, j);
 			t_pt.globalIdx = global_id;
-			t_pt.depth = (double)(depth.at<uint16_t>(m.mapImage(j), m.mapImage(i))); //at(row,col) --so--> at(j,i)
+			t_pt.depth = (double)(depth.at<uint16_t>(m.mapImage(j), m.mapImage(i))) / depthDiv; //at(row,col) --so--> at(j,i)
 			m.meshPT.push_back(t_pt);
 			global_id++;
 		}

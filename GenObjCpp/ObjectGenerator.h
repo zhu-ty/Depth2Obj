@@ -35,9 +35,9 @@ class ObjectGenerator
 public:
 	ObjectGenerator() {};
 	~ObjectGenerator() {};
-	int AddMesh(std::string colorFile, std::string depthFile, int pieceSize = 2, double depthSeg = 10.0, int minimumArea = 2);
+	int AddMesh(std::string colorFile, std::string depthFile, int pieceSize = 2, double depthSeg = 10.0, int minimumArea = 2, double depthDiv = 1.0);
 
-	int AddMesh(cv::Mat color, cv::Mat depth, int pieceSize = 2, double depthSeg = 10.0, int minimumArea = 2);
+	int AddMesh(cv::Mat color, cv::Mat depth, int pieceSize = 2, double depthSeg = 10.0, int minimumArea = 2, double depthDiv = 1.0);
 
 	int OutputSingleObj(std::string dir, int meshID, std::string name = "SingleObject");
 

@@ -22,34 +22,23 @@ vy
 
 int main(int argc, char* argv[])
 {
-	//if (argc != 3 && argc != 6)
-	//{
-	//	printf("Input Format:\nGenObkCpp Icolor Idepth [PieceSize=2 DepthSeg=10.0 MinimumArea=2]\n");
-	//	printf("Input Sample 1:\nGenObjCpp Icolor.jpg Idepth.jpg 1 5 3\n");
-	//	printf("Input Sample 2:\nGenObjCpp Icolor.jpg Idepth.jpg\n");
-	//	return 0;
-	//}
-
-	//int PieceSize = 2, MinimumArea = 2;
-	//float DepthSeg = 10.0f;
-	//if (argc == 6)
-	//{
-	//	PieceSize = std::atoi(argv[3]);
-	//	DepthSeg = std::atof(argv[4]);
-	//	MinimumArea = std::atoi(argv[5]);
-	//}
+	std::string argv1("input.txt");
 
 	if(argc < 2)
 	{
 		printf("Input Format:\nGenObjCpp input.txt");
+		printf("input.txt:\n[num]\n[Color] [Depth] [PieceSize] [DepthSeg] [MinimumArea] [DepthDiv]");
 		FILE *out = fopen("SampleInput.txt", "w");
 		fprintf(out,"2\n");
-		fprintf(out, "Icolor.jpg Idepth.jpg 1 5 3");
-		fprintf(out, "Icolor2.jpg Idepth2.jpg 2 10.0 2");
-		return 0;
+		fprintf(out, "Icolor.jpg Idepth.jpg 1 5 3 1.0");
+		fprintf(out, "Icolor2.jpg Idepth2.jpg 2 10.0 2 1.0");
+		//return 0;
 	}
-
-	FILE *in = fopen(argv[1], "r");
+	else
+	{
+		argv1 = argv[1];
+	}
+	FILE *in = fopen(argv1.c_str(), "r");
 	int count;
 	fscanf(in, "%d\n", &count);
 	ObjectGenerator OG;
@@ -57,9 +46,9 @@ int main(int argc, char* argv[])
 	{
 		char color[1000] = {0}, depth[1000] = { 0 };
 		int p, m;
-		double d;
-		fscanf(in, "%s %s %d %lf %d\n", color, depth, &p, &d, &m);
-		OG.AddMesh(color, depth, p, d, m);
+		double d, div;
+		fscanf(in, "%s %s %d %lf %d %lf\n", color, depth, &p, &d, &m, &div);
+		OG.AddMesh(color, depth, p, d, m, div);
 	}
 
 	
