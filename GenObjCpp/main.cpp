@@ -26,12 +26,18 @@ int main(int argc, char* argv[])
 
 	if(argc < 2)
 	{
-		printf("Input Format:\nGenObjCpp input.txt");
-		printf("input.txt:\n[num]\n[Color] [Depth] [PieceSize] [DepthSeg] [MinimumArea] [DepthDiv]");
+		printf("Input Format:\nGenObjCpp input.txt\n");
+		printf("input.txt:\n[num]\n[Color] [Depth] [PieceSize] [DepthSeg] [MinimumAreaHole] [MinimumAreaBlock] [DepthDiv]\n");
+		printf("输入解释（中文）：\n输入一个文本文件，文件第一行为需要合并的depth/color 图像数量，此后每行：\n");
+		printf("[纹理图]\n[深度图]（必须为16bit）\n[切分大小]（每几个点切一个三角形）\n");
+		printf("[深度阈值]（超过阈值认为属于深度差异较大区域，记为hole，否则记为block）\n");
+		printf("[最小hole面积]（超过面积的连续hole将不被渲染）\n");
+		printf("[最小block面积]（小于面积的连续block将不被渲染）\n");
+		printf("[深度变换]（实际深度将除以这个数作为渲染深度）\n");
 		FILE *out = fopen("SampleInput.txt", "w");
 		fprintf(out,"2\n");
-		fprintf(out, "Icolor.jpg Idepth.jpg 1 5 3 1.0");
-		fprintf(out, "Icolor2.jpg Idepth2.jpg 2 10.0 2 1.0");
+		fprintf(out, "Icolor.jpg Idepth.jpg 1 5 3 5 1.0\n");
+		fprintf(out, "Icolor2.jpg Idepth2.jpg 2 10.0 2 4 1.0\n");
 		//return 0;
 	}
 	else
@@ -45,10 +51,10 @@ int main(int argc, char* argv[])
 	for (int i = 0; i < count; i++)
 	{
 		char color[1000] = {0}, depth[1000] = { 0 };
-		int p, m;
+		int p, mh, mb;
 		double d, div;
-		fscanf(in, "%s %s %d %lf %d %lf\n", color, depth, &p, &d, &m, &div);
-		OG.AddMesh(color, depth, p, d, m, div);
+		fscanf(in, "%s %s %d %lf %d %d %lf\n", color, depth, &p, &d, &mh, &mb, &div);
+		OG.AddMesh(color, depth, p, d, mh, mb, div);
 	}
 
 	

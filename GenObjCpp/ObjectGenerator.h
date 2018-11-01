@@ -35,9 +35,11 @@ class ObjectGenerator
 public:
 	ObjectGenerator() {};
 	~ObjectGenerator() {};
-	int AddMesh(std::string colorFile, std::string depthFile, int pieceSize = 2, double depthSeg = 10.0, int minimumArea = 2, double depthDiv = 1.0);
+	int AddMesh(std::string colorFile, std::string depthFile,
+		int pieceSize = 2, double depthSeg = 10.0, int minimumAreaHole = 2, int minimumAreaBlock = 2, double depthDiv = 1.0);
 
-	int AddMesh(cv::Mat color, cv::Mat depth, int pieceSize = 2, double depthSeg = 10.0, int minimumArea = 2, double depthDiv = 1.0);
+	int AddMesh(cv::Mat color, cv::Mat depth,
+		int pieceSize = 2, double depthSeg = 10.0, int minimumAreaHole = 2, int minimumAreaBlock = 2, double depthDiv = 1.0);
 
 	int OutputSingleObj(std::string dir, int meshID, std::string name = "SingleObject");
 
@@ -84,14 +86,18 @@ private:
 		}
 		Pt pts[3];
 		bool hole;
-		int areaCalculated; //0 -> not caculated, num -> hole area size, -1 -> calculating
+		int areaCalculated; 
+		//0 -> not caculated, -num -> hole area size, -1 -> calculating hole size
+		//+num -> block area size, +1 -> calculating block size
 	};
 
 	struct mesh
 	{
-		int w, h, pieceSize, minmumArea;
+		int w, h, pieceSize, minimumAreaHole, minimumAreaBlock;
 		float depthSeg;
-		int maxArea;
+		double depthDiv;
+		int maxAreaHole;
+		int maxAreaBlock;
 		cv::Mat IC;
 		cv::Mat ID;
 		std::vector<Pt> meshPT;
@@ -106,7 +112,7 @@ private:
 		//	DepthSeg = 10.0f;
 		//}
 
-		mesh(cv::Mat _IC, cv::Mat _ID, int _pieceSize, double _depthSeg, int _minimumArea)
+		mesh(cv::Mat _IC, cv::Mat _ID, int _pieceSize, double _depthSeg, int _minimumAreaHole, int _minimumAreaBlock, double _depthDiv)
 		{
 			IC = _IC;
 			ID = _ID;
@@ -118,8 +124,11 @@ private:
 			h = ID.rows;
 			pieceSize = _pieceSize;
 			depthSeg = _depthSeg;
-			minmumArea = _minimumArea;
-			maxArea = 0;
+			minimumAreaHole = _minimumAreaHole;
+			minimumAreaBlock = _minimumAreaBlock;
+			maxAreaHole = 0;
+			maxAreaBlock = 0;
+			depthDiv = _depthDiv;
 		}
 
 		// row = h / PieceSize
@@ -155,6 +164,8 @@ private:
 		}
 	};
 
+	int OutputSegMat(std::string file,int meshID, bool hole);
+
 	//critical: [i,j] may mark 2 triangles, so we use updown = 0/1 to switch each of them
 	/*
 	00     2
@@ -165,11 +176,13 @@ private:
 	v     >1
 	1----->2
 	*/
-	static int CalculateAreaStackOverFlow(int c, int r, int updown, std::vector<Tri*> &list_this, mesh &m);
+	//static int CalculateAreaStackOverFlow(int c, int r, int updown, std::vector<Tri*> &list_this, mesh &m);
 
-	static int CalculateArea(int c, int r, int updown, std::vector<Tri*> &list_this, mesh &m);
+	static int CalculateArea(int c, int r, int updown, std::vector<Tri*> &list_this, mesh &m, bool hole);
 
-	static Tri* getTri(int c, int r, int updown, mesh &m);
+	static Tri* getTri(int c, int r, int updown, mesh &m, bool hole);
+
+	
 
 	std::vector<mesh> meshs;
 	int global_id = 1;

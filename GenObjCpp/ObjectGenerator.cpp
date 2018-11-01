@@ -1,37 +1,65 @@
 #include "ObjectGenerator.h"
 
-int ObjectGenerator::CalculateAreaStackOverFlow(int c, int r, int updown, std::vector<Tri*>& list_this, mesh &m)
+//int ObjectGenerator::CalculateAreaStackOverFlow(int c, int r, int updown, std::vector<Tri*>& list_this, mesh &m)
+//{
+//	if (c < 0 || r < 0 || c >= m.col() - 1 || r >= m.row() - 1)
+//		return 0;
+//	int ret = 0;
+//	Tri *t;
+//	t = &(m.meshTRI[m.mapTriangle(c, r, updown)]);
+//	if (t->hole == true && t->areaCalculated == 0)
+//	{
+//		t->areaCalculated = -1;
+//		list_this.push_back(t);
+//		ret += 1;
+//		if (updown == 0)
+//		{
+//			ret += CalculateAreaStackOverFlow(c, r, 1, list_this, m);
+//			ret += CalculateAreaStackOverFlow(c, r - 1, 1, list_this, m);
+//			ret += CalculateAreaStackOverFlow(c + 1, r, 1, list_this, m);
+//		}
+//		else
+//		{
+//			ret += CalculateAreaStackOverFlow(c, r, 0, list_this, m);
+//			ret += CalculateAreaStackOverFlow(c - 1, r, 0, list_this, m);
+//			ret += CalculateAreaStackOverFlow(c, r + 1, 0, list_this, m);
+//		}
+//	}
+//	return ret;
+//}
+
+int ObjectGenerator::OutputSegMat(std::string file, int meshID, bool hole)
 {
-	if (c < 0 || r < 0 || c >= m.col() - 1 || r >= m.row() - 1)
-		return 0;
-	int ret = 0;
-	Tri *t;
-	t = &(m.meshTRI[m.mapTriangle(c, r, updown)]);
-	if (t->hole == true && t->areaCalculated == 0)
-	{
-		t->areaCalculated = -1;
-		list_this.push_back(t);
-		ret += 1;
-		if (updown == 0)
+	cv::Mat segMat, segMatColor, segMatColor255;
+	cv::Mat countMat;
+	countMat.create(meshs[meshID].row() - 1, meshs[meshID].col() - 1, CV_16UC1);
+	countMat.setTo(cv::Scalar(0));
+	segMat.create(meshs[meshID].row() - 1, meshs[meshID].col() - 1, CV_32FC3);
+	segMat.setTo(cv::Scalar(1.0f, 1.0f, 1.0f));
+	for (int i = 0; i < meshs[meshID].row() - 1; i++)
+		for (int j = 0; j < meshs[meshID].col() - 1; j++)
 		{
-			ret += CalculateAreaStackOverFlow(c, r, 1, list_this, m);
-			ret += CalculateAreaStackOverFlow(c, r - 1, 1, list_this, m);
-			ret += CalculateAreaStackOverFlow(c + 1, r, 1, list_this, m);
+			int t1 = meshs[meshID].mapTriangle(j, i, 0);
+			int t2 = meshs[meshID].mapTriangle(j, i, 1);
+			int AC1 = (!(hole ^ (meshs[meshID].meshTRI[t1].areaCalculated < 0))) ? abs(meshs[meshID].meshTRI[t1].areaCalculated) : 0;
+			int AC2 = (!(hole ^ (meshs[meshID].meshTRI[t2].areaCalculated < 0))) ? abs(meshs[meshID].meshTRI[t2].areaCalculated) : 0;
+
+			segMat.at<cv::Vec3f>(i, j)[0] = 240.0f - (AC1 + AC2) / (2.0f * (hole ? meshs[meshID].maxAreaHole : meshs[meshID].maxAreaBlock)) * 240.0f;
+			countMat.at<unsigned short>(i, j) = (AC1 + AC2 > 65535) ? 65535 : (AC1 + AC2);
+			//test_Mat.at<unsigned short>(i, j) = meshTRI[j * (h / PieceSize - 1) * 2 + i].areaCalculated;
 		}
-		else
-		{
-			ret += CalculateAreaStackOverFlow(c, r, 0, list_this, m);
-			ret += CalculateAreaStackOverFlow(c - 1, r, 0, list_this, m);
-			ret += CalculateAreaStackOverFlow(c, r + 1, 0, list_this, m);
-		}
-	}
-	return ret;
+	cv::cvtColor(segMat, segMatColor, CV_HSV2BGR);
+	segMatColor.convertTo(segMatColor255, CV_8UC3, 255.0f);
+	cv::imwrite(file + ".jpg", segMatColor255);
+
+	cv::imwrite(file + "CountMat.tiff", countMat);
+	return 0;
 }
 
-int ObjectGenerator::CalculateArea(int c, int r, int updown, std::vector<Tri*>& list_this, mesh &m)
+int ObjectGenerator::CalculateArea(int c, int r, int updown, std::vector<Tri*>& list_this, mesh &m, bool hole)
 {
 	Tri *t;
-	if ((t = getTri(c,r,updown,m)) == nullptr)
+	if ((t = getTri(c,r,updown,m, hole)) == nullptr)
 		return 0;
 	int ret = 0;
 	std::vector<Tri*> list_stack;
@@ -40,21 +68,21 @@ int ObjectGenerator::CalculateArea(int c, int r, int updown, std::vector<Tri*>& 
 	while (list_stack.size() > 0)
 	{
 		Tri* tri_back = list_stack.back();
-		tri_back->areaCalculated = -1;
+		tri_back->areaCalculated = hole ? -1 : 1;
 		Tri* child;
-		if ((child = getTri(tri_back->c(), tri_back->r(), 1 - tri_back->updown(), m)) != nullptr)
+		if ((child = getTri(tri_back->c(), tri_back->r(), 1 - tri_back->updown(), m, hole)) != nullptr)
 		{
 			list_stack.push_back(child);
 			list_this.push_back(child);
 			continue;
 		}
-		if ((child = getTri(tri_back->c() + ((tri_back->updown() == 0) ? 1 : -1), tri_back->r(), 1 - tri_back->updown(), m)) != nullptr)
+		if ((child = getTri(tri_back->c() + ((tri_back->updown() == 0) ? 1 : -1), tri_back->r(), 1 - tri_back->updown(), m, hole)) != nullptr)
 		{
 			list_stack.push_back(child);
 			list_this.push_back(child);
 			continue;
 		}
-		if ((child = getTri(tri_back->c(), tri_back->r() - ((tri_back->updown() == 0) ? 1 : -1), 1 - tri_back->updown(), m)) != nullptr)
+		if ((child = getTri(tri_back->c(), tri_back->r() - ((tri_back->updown() == 0) ? 1 : -1), 1 - tri_back->updown(), m, hole)) != nullptr)
 		{
 			list_stack.push_back(child);
 			list_this.push_back(child);
@@ -66,35 +94,35 @@ int ObjectGenerator::CalculateArea(int c, int r, int updown, std::vector<Tri*>& 
 	return ret;
 }
 
-ObjectGenerator::Tri * ObjectGenerator::getTri(int c, int r, int updown, mesh & m)
+ObjectGenerator::Tri * ObjectGenerator::getTri(int c, int r, int updown, mesh & m, bool hole)
 {
 	if (c < 0 || r < 0 || c >= m.col() - 1 || r >= m.row() - 1)
 		return nullptr;
 	Tri *t;
 	t = &(m.meshTRI[m.mapTriangle(c, r, updown)]);
-	if (t->hole == true && t->areaCalculated == 0)
+	if (t->hole == hole && t->areaCalculated == 0)
 		return t;
 	return nullptr;
 }
 
 
-int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, int pieceSize, double depthSeg, int minimumArea, double depthDiv)
+int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv)
 {
 	cv::Mat c, d;
 	c = cv::imread(colorFile);
 	d = cv::imread(depthFile, CV_LOAD_IMAGE_UNCHANGED);
-	this->AddMesh(c, d, pieceSize, depthSeg, minimumArea, depthDiv);
+	this->AddMesh(c, d, pieceSize, depthSeg, minimumAreaHole, minimumAreaBlock, depthDiv);
 	return 0;
 }
 
-int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double depthSeg, int minimumArea, double depthDiv)
+int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv)
 {
 	if (depth.type() != CV_16UC1)
 	{
 		SysUtil::errorOutput("ObjectGenerator::AddMesh only depth = CV_16UC1 supported.");
 		return -1;
 	}
-	mesh m(color, depth, pieceSize, depthSeg, minimumArea);
+	mesh m(color, depth, pieceSize, depthSeg, minimumAreaHole, minimumAreaBlock, depthDiv);
 	for (int i = 0; i < m.col(); i++)
 	{
 		for (int j = 0; j < m.row(); j++)
@@ -103,7 +131,7 @@ int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double
 			t_pt.imgPos = cv::Point(m.mapImage(i), m.mapImage(j));
 			t_pt.idxPos = cv::Point(i, j);
 			t_pt.globalIdx = global_id;
-			t_pt.depth = (double)(depth.at<uint16_t>(m.mapImage(j), m.mapImage(i))) / depthDiv; //at(row,col) --so--> at(j,i)
+			t_pt.depth = (double)(depth.at<uint16_t>(m.mapImage(j), m.mapImage(i))) / m.depthDiv; //at(row,col) --so--> at(j,i)
 			m.meshPT.push_back(t_pt);
 			global_id++;
 		}
@@ -137,18 +165,53 @@ int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double
 		}
 	}
 
+	//step 1: find holes and turn small holes into blocks
 	for (int i = 0; i < m.meshTRI.size(); i++)
 	{
-		if (m.meshTRI[i].hole == true && m.meshTRI[i].areaCalculated == 0)
+		if (m.meshTRI[i].areaCalculated == 0)
 		{
 			int updown, c, r;
 			m.mapTriangleXY(i, c, r, updown);
-			std::vector<Tri*> list_this;
-			int count = CalculateArea(c, r, updown, list_this, m);
-			for (int j = 0; j < list_this.size(); j++)
-				list_this[j]->areaCalculated = count;
-			if (count > m.maxArea)
-				m.maxArea = count;
+			if (m.meshTRI[i].hole)
+			{
+				std::vector<Tri*> list_this;
+				int count = CalculateArea(c, r, updown, list_this, m, true);
+				if (count < m.minimumAreaHole)
+				{
+					for (int j = 0; j < list_this.size(); j++)
+					{
+						//turn them into blocks
+						list_this[j]->areaCalculated = 0;
+						list_this[j]->hole = false;
+					}
+				}
+				else
+				{
+					for (int j = 0; j < list_this.size(); j++)
+						list_this[j]->areaCalculated = -count;
+					if (count > m.maxAreaHole)
+						m.maxAreaHole = count;
+				}
+
+			}
+		}
+	}
+	//step 2: find blocks
+	for (int i = 0; i < m.meshTRI.size(); i++)
+	{
+		if (m.meshTRI[i].areaCalculated == 0)
+		{
+			int updown, c, r;
+			m.mapTriangleXY(i, c, r, updown);
+			if (m.meshTRI[i].hole == false)
+			{
+				std::vector<Tri*> list_this;
+				int count = CalculateArea(c, r, updown, list_this, m, false);
+				for (int j = 0; j < list_this.size(); j++)
+					list_this[j]->areaCalculated = count;
+				if (count > m.maxAreaBlock)
+					m.maxAreaBlock = count;
+			}	
 		}
 	}
 	meshs.push_back(m);
@@ -161,13 +224,15 @@ int ObjectGenerator::OutputSingleObj(std::string dir, int meshID, std::string na
 	SysUtil::mkdir(dirname);
 
 	FILE *param = fopen((dirname +
-		SysUtil::format("/%s_%d_%.1f_%d.txt",
+		SysUtil::format("/%s_%d_%.1f_%d_%d_%.1f.txt",
 			name.c_str(),
 			meshs[meshID].pieceSize,
 			meshs[meshID].depthSeg,
-			meshs[meshID].minmumArea)).c_str(), "w");
-	fprintf(param, "PieceSize = %d\nDepthSeg = %f\nMinmumArea = %d\n",
-		meshs[meshID].pieceSize, meshs[meshID].depthSeg, meshs[meshID].minmumArea);
+			meshs[meshID].minimumAreaHole,
+			meshs[meshID].minimumAreaBlock,
+			meshs[meshID].depthDiv)).c_str(), "w");
+	fprintf(param, "PieceSize = %d\nDepthSeg = %f\nMinimumAreaHole = %d\nMinimumAreaBlock = %d\nDepthDiv = %f\n",
+		meshs[meshID].pieceSize, meshs[meshID].depthSeg, meshs[meshID].minimumAreaHole, meshs[meshID].minimumAreaBlock, meshs[meshID].depthDiv);
 	fclose(param);
 
 	FILE *obj = fopen((dirname + "/object.obj").c_str(), "w");
@@ -180,7 +245,9 @@ int ObjectGenerator::OutputSingleObj(std::string dir, int meshID, std::string na
 	int global_id_diff = meshs[meshID].meshPT[0].globalIdx - 1;
 	for (int i = 0; i < meshs[meshID].meshTRI.size(); i++)
 	{
-		if (meshs[meshID].meshTRI[i].hole == false || meshs[meshID].meshTRI[i].areaCalculated < meshs[meshID].minmumArea)
+		if ((meshs[meshID].meshTRI[i].hole == false && meshs[meshID].meshTRI[i].areaCalculated > meshs[meshID].minimumAreaBlock) ||
+			(meshs[meshID].meshTRI[i].hole == true && abs(meshs[meshID].meshTRI[i].areaCalculated) < meshs[meshID].minimumAreaHole))
+		{
 			fprintf(obj, "f %d/%d %d/%d %d/%d\n",
 				meshs[meshID].meshTRI[i].pts[0].globalIdx - global_id_diff,
 				meshs[meshID].meshTRI[i].pts[0].globalIdx - global_id_diff,
@@ -188,6 +255,8 @@ int ObjectGenerator::OutputSingleObj(std::string dir, int meshID, std::string na
 				meshs[meshID].meshTRI[i].pts[1].globalIdx - global_id_diff,
 				meshs[meshID].meshTRI[i].pts[2].globalIdx - global_id_diff,
 				meshs[meshID].meshTRI[i].pts[2].globalIdx - global_id_diff);
+		}
+			
 	}
 	fclose(obj);
 
@@ -210,20 +279,8 @@ int ObjectGenerator::OutputSingleObj(std::string dir, int meshID, std::string na
 	cv::imwrite(dirname + "/texture.jpg", meshs[meshID].IC);
 	cv::imwrite(dirname + "/depth.png", meshs[meshID].ID);
 
-	cv::Mat segMat,segMatColor, segMatColor255;
-	segMat.create(meshs[meshID].row() - 1, meshs[meshID].col() - 1, CV_32FC3);
-	segMat.setTo(cv::Scalar(1.0f, 1.0f, 1.0f));
-	for (int i = 0; i < meshs[meshID].row() - 1; i++)
-		for (int j = 0; j < meshs[meshID].col() - 1; j++)
-		{
-			int t1 = meshs[meshID].mapTriangle(j, i, 0);
-			int t2 = meshs[meshID].mapTriangle(j, i, 1);
-			segMat.at<cv::Vec3f>(i, j)[0] = 240.0f - (meshs[meshID].meshTRI[t1].areaCalculated + meshs[meshID].meshTRI[t2].areaCalculated) / (2.0f * meshs[meshID].maxArea) * 240.0f;
-			//test_Mat.at<unsigned short>(i, j) = meshTRI[j * (h / PieceSize - 1) * 2 + i].areaCalculated;
-		}
-	cv::cvtColor(segMat, segMatColor, CV_HSV2BGR);
-	segMatColor.convertTo(segMatColor255, CV_8UC3, 255.0f);
-	cv::imwrite(dirname + "/seg.jpg", segMatColor255);
+	OutputSegMat(dirname + "/seg_block", meshID, false);
+	OutputSegMat(dirname + "/seg_hole", meshID, true);
 	return 0;
 }
 
@@ -246,7 +303,9 @@ int ObjectGenerator::OutputMixedObj(std::string dir, std::string name)
 		fprintf(obj, "usemtl %d__mtl\n", meshID);
 		for (int i = 0; i < meshs[meshID].meshTRI.size(); i++)
 		{
-			if (meshs[meshID].meshTRI[i].hole == false || meshs[meshID].meshTRI[i].areaCalculated < meshs[meshID].minmumArea)
+			if ((meshs[meshID].meshTRI[i].hole == false && meshs[meshID].meshTRI[i].areaCalculated > meshs[meshID].minimumAreaBlock) ||
+				(meshs[meshID].meshTRI[i].hole == true && abs(meshs[meshID].meshTRI[i].areaCalculated) < meshs[meshID].minimumAreaHole))
+			{
 				fprintf(obj, "f %d/%d %d/%d %d/%d\n",
 					meshs[meshID].meshTRI[i].pts[0].globalIdx,
 					meshs[meshID].meshTRI[i].pts[0].globalIdx,
@@ -254,6 +313,7 @@ int ObjectGenerator::OutputMixedObj(std::string dir, std::string name)
 					meshs[meshID].meshTRI[i].pts[1].globalIdx,
 					meshs[meshID].meshTRI[i].pts[2].globalIdx,
 					meshs[meshID].meshTRI[i].pts[2].globalIdx);
+			}
 		}
 	}
 	fclose(obj);
