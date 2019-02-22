@@ -106,16 +106,16 @@ ObjectGenerator::Tri * ObjectGenerator::getTri(int c, int r, int updown, mesh & 
 }
 
 
-int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv)
+int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv, double cameraK)
 {
 	cv::Mat c, d;
 	c = cv::imread(colorFile);
 	d = cv::imread(depthFile, CV_LOAD_IMAGE_UNCHANGED);
-	this->AddMesh(c, d, pieceSize, depthSeg, minimumAreaHole, minimumAreaBlock, depthDiv);
+	this->AddMesh(c, d, pieceSize, depthSeg, minimumAreaHole, minimumAreaBlock, depthDiv, cameraK);
 	return 0;
 }
 
-int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv)
+int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv, double cameraK)
 {
 	if (depth.type() != CV_16UC1)
 	{
@@ -131,12 +131,16 @@ int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double
 			t_pt.imgPos = cv::Point(m.mapImage(i), m.mapImage(j));
 			t_pt.idxPos = cv::Point(i, j);
 			t_pt.globalIdx = global_id;
-			t_pt.depth = (double)(depth.at<uint16_t>(m.mapImage(j), m.mapImage(i))) / m.depthDiv; //at(row,col) --so--> at(j,i)
+			t_pt.depth = (double)(depth.at<uint16_t>(m.mapImage(j), m.mapImage(i))); //at(row,col) --so--> at(j,i)
+			t_pt.renderPos.x = 1 / cameraK*t_pt.depth*m.mapImage(i) - m.w / (2.0*cameraK)*t_pt.depth;
+			t_pt.renderPos.y = 1 / cameraK*t_pt.depth*m.mapImage(j) - m.h / (2.0*cameraK)*t_pt.depth;
+			t_pt.renderPos.z = t_pt.depth / m.depthDiv;
 			m.meshPT.push_back(t_pt);
 			global_id++;
 		}
 	}
 
+	
 
 	for (int i = 0; i < m.col() - 1; i++)
 	{
@@ -239,7 +243,7 @@ int ObjectGenerator::OutputSingleObj(std::string dir, int meshID, std::string na
 	fprintf(obj, "mtllib texture.mtl\nusemtl 01___Default\n");
 	for (int i = 0; i < meshs[meshID].meshPT.size(); i++)
 	{
-		fprintf(obj, "v %f %f %f\n", (double)meshs[meshID].meshPT[i].imgPos.x, -(double)meshs[meshID].meshPT[i].imgPos.y, -meshs[meshID].meshPT[i].depth);
+		fprintf(obj, "v %f %f %f\n", (double)meshs[meshID].meshPT[i].renderPos.x, -(double)meshs[meshID].meshPT[i].renderPos.y, -(double)meshs[meshID].meshPT[i].renderPos.z);
 		fprintf(obj, "vt %f %f %f\n", meshs[meshID].meshPT[i].imgPos.x / (double)meshs[meshID].w, 1.0 - meshs[meshID].meshPT[i].imgPos.y / (double)meshs[meshID].h, 0.0);
 	}
 	int global_id_diff = meshs[meshID].meshPT[0].globalIdx - 1;
@@ -294,7 +298,7 @@ int ObjectGenerator::OutputMixedObj(std::string dir, std::string name)
 	{
 		for (int i = 0; i < meshs[meshID].meshPT.size(); i++)
 		{
-			fprintf(obj, "v %f %f %f\n", (double)meshs[meshID].meshPT[i].imgPos.x, -(double)meshs[meshID].meshPT[i].imgPos.y, -meshs[meshID].meshPT[i].depth);
+			fprintf(obj, "v %f %f %f\n", (double)meshs[meshID].meshPT[i].renderPos.x, -(double)meshs[meshID].meshPT[i].renderPos.y, -(double)meshs[meshID].meshPT[i].renderPos.z);
 			fprintf(obj, "vt %f %f %f\n", meshs[meshID].meshPT[i].imgPos.x / (double)meshs[meshID].w, 1.0 - meshs[meshID].meshPT[i].imgPos.y / (double)meshs[meshID].h, 0.0);
 		}
 	}
