@@ -97,7 +97,7 @@ private:
 	{
 		int w, h, pieceSize, minimumAreaHole, minimumAreaBlock;
 		float depthSeg;
-		double depthDiv;
+		double depthDiv, cameraK;
 		int maxAreaHole;
 		int maxAreaBlock;
 		cv::Mat IC;
@@ -131,6 +131,7 @@ private:
 			maxAreaHole = 0;
 			maxAreaBlock = 0;
 			depthDiv = _depthDiv;
+			cameraK = IC.cols / 2;
 		}
 
 		// row = h / PieceSize

@@ -57,10 +57,11 @@ int main(int argc, char* argv[])
 		fscanf(in, "%s %s %d %lf %d %d %lf\n", color, depth, &p, &d, &mh, &mb, &div);
 		OG.AddMesh(color, depth, p, d, mh, mb, div, K);
 	}
-
+	fclose(in);
 	
 	//OG.AddMesh(argv[1], argv[2], PieceSize, DepthSeg, MinimumArea);
 	//OG.OutputSingleObj(".", 0);
-	OG.OutputMixedObj(".");
+	OG.OutputMixedObj(".", "MixedObject");
+	SysUtil::copyFile(argv1, "MixedObject/" + argv1);
 	return 0;
 }

@@ -88,6 +88,23 @@ public:
 		return mkdir((char *)dir.c_str());
 	}
 
+	static int copyFile(std::string file1, std::string file2)
+	{
+		if (file1 == file2)
+			return -1;
+		FILE *src = fopen(file1.c_str(), "rb");
+		FILE *dst = fopen(file2.c_str(), "wb");
+		if (src == nullptr)
+			return -2;
+		int i;
+		for (i = getc(src); i != EOF; i = getc(src))
+		{
+			putc(i, dst);
+		}
+		fclose(dst);
+		fclose(src);
+	}
+
 	/***********************************************************/
 	/*                    sleep function                       */
 	/***********************************************************/

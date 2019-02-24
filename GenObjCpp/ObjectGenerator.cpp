@@ -123,6 +123,7 @@ int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double
 		return -1;
 	}
 	mesh m(color, depth, pieceSize, depthSeg, minimumAreaHole, minimumAreaBlock, depthDiv);
+	m.cameraK = cameraK;
 	for (int i = 0; i < m.col(); i++)
 	{
 		for (int j = 0; j < m.row(); j++)
@@ -228,15 +229,21 @@ int ObjectGenerator::OutputSingleObj(std::string dir, int meshID, std::string na
 	SysUtil::mkdir(dirname);
 
 	FILE *param = fopen((dirname +
-		SysUtil::format("/%s_%d_%.1f_%d_%d_%.1f.txt",
+		SysUtil::format("/%s_%d_%.1f_%d_%d_%.1f_%.1f.txt",
 			name.c_str(),
 			meshs[meshID].pieceSize,
 			meshs[meshID].depthSeg,
 			meshs[meshID].minimumAreaHole,
 			meshs[meshID].minimumAreaBlock,
-			meshs[meshID].depthDiv)).c_str(), "w");
-	fprintf(param, "PieceSize = %d\nDepthSeg = %f\nMinimumAreaHole = %d\nMinimumAreaBlock = %d\nDepthDiv = %f\n",
-		meshs[meshID].pieceSize, meshs[meshID].depthSeg, meshs[meshID].minimumAreaHole, meshs[meshID].minimumAreaBlock, meshs[meshID].depthDiv);
+			meshs[meshID].depthDiv,
+			meshs[meshID].cameraK)).c_str(), "w");
+	fprintf(param, "PieceSize = %d\nDepthSeg = %f\nMinimumAreaHole = %d\nMinimumAreaBlock = %d\nDepthDiv = %f\ncameraK = %f\n",
+		meshs[meshID].pieceSize,
+		meshs[meshID].depthSeg,
+		meshs[meshID].minimumAreaHole,
+		meshs[meshID].minimumAreaBlock,
+		meshs[meshID].depthDiv,
+		meshs[meshID].cameraK);
 	fclose(param);
 
 	FILE *obj = fopen((dirname + "/object.obj").c_str(), "w");
