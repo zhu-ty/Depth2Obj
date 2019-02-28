@@ -153,19 +153,11 @@ int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double
 			t2 = m.meshPT[(i + 1) * m.row() + j];
 			t3 = m.meshPT[i * m.row() + j + 1];
 			t4 = m.meshPT[(i + 1) * m.row() + j + 1];
-			t_tri1.pts[0] = t1;
-			t_tri1.pts[1] = t4;
-			t_tri1.pts[2] = t2;
-			if (t1.absdiff(t4) > m.depthSeg || t1.absdiff(t2) > m.depthSeg || t4.absdiff(t2) > m.depthSeg
-				|| t1.depth <= 0 || t2.depth <= 0 || t4.depth <= 0)
-				t_tri1.hole = true;
+
+			t_tri1 = m.genTriangle(std::vector<Pt>{ t1, t2, t4 });
+			t_tri2 = m.genTriangle(std::vector<Pt>{ t1, t3, t4 });
+
 			m.meshTRI.push_back(t_tri1);
-			t_tri2.pts[0] = t1;
-			t_tri2.pts[1] = t3;
-			t_tri2.pts[2] = t4;
-			if (t1.absdiff(t4) > m.depthSeg || t1.absdiff(t3) > m.depthSeg || t4.absdiff(t3) > m.depthSeg
-				|| t1.depth <= 0 || t3.depth <= 0 || t4.depth <= 0)
-				t_tri2.hole = true;
 			m.meshTRI.push_back(t_tri2);
 		}
 	}

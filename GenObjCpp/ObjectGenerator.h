@@ -53,7 +53,7 @@ private:
 		//col,row
 		cv::Point idxPos;
 		//Converted pos
-		cv::Point3i renderPos;
+		cv::Point3d renderPos;
 		double depth;
 		int globalIdx;
 		double operator-(Pt &another) //TODO : change it to pos - pos
@@ -87,6 +87,7 @@ private:
 			return pts[0].idxPos.y;
 		}
 		Pt pts[3];
+		cv::Point3d normal;
 		bool hole;
 		int areaCalculated; 
 		//0 -> not caculated, -num -> hole area size, -1 -> calculating hole size
@@ -164,6 +165,43 @@ private:
 		int mapTriangle(int c, int r, int updown)
 		{
 			return (c * (row() - 1) + r) * 2 + updown;
+		}
+
+		Tri genTriangle(std::vector<Pt> pts3)
+		{
+			Tri ret;
+			ret.hole = false;
+			ret.normal = cv::Point3d(0, 0, 0);
+			for (int i = 0; i < 3; i++)
+			{
+				ret.pts[i] = pts3[i];
+				if (pts3[i].depth <= 0)
+					ret.hole = true;
+			}
+			if (ret.hole == false)
+			{
+				cv::Point3d p1 = pts3[1].renderPos - pts3[0].renderPos;
+				cv::Point3d p2 = pts3[2].renderPos - pts3[1].renderPos;
+				cv::Point3d N = p1.cross(p2);
+				if(N.dot(N) < 1e-5)
+					ret.hole = true;
+				else
+				{
+					N = N / sqrt(N.dot(N));
+					ret.normal = N;
+					cv::Point3d mean = (pts3[0].renderPos + pts3[1].renderPos + pts3[2].renderPos) / 3.0;
+					double len = sqrt(N.dot(N) * mean.dot(mean));
+					if (len < 1e-5)
+						ret.hole = true;
+					else
+					{
+						double cosine = abs(N.dot(mean) / len);
+						if (cosine < this->depthSeg)
+							ret.hole = true;
+					}
+				}
+			}
+			return ret;
 		}
 	};
 
