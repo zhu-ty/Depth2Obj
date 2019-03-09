@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
 		fprintf(out, "Icolor2.jpg Idepth2.jpg 2 0.1 2 4 1.0\n");
 		return 0;
 	}
-	else
+	else if(argc >= 2)
 	{
 		argv1 = argv[1];
 	}
