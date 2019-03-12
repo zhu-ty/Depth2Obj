@@ -32,19 +32,6 @@ class ObjectGenerator
 	| ..  ..
 	vy
 	*/
-public:
-	ObjectGenerator() {};
-	~ObjectGenerator() {};
-	int AddMesh(std::string colorFile, std::string depthFile,
-		int pieceSize = 2, double depthSeg = 10.0, int minimumAreaHole = 2, int minimumAreaBlock = 2, double depthDiv = 1.0, double cameraK = 1e3);
-
-	int AddMesh(cv::Mat color, cv::Mat depth,
-		int pieceSize = 2, double depthSeg = 10.0, int minimumAreaHole = 2, int minimumAreaBlock = 2, double depthDiv = 1.0, double cameraK = 1e3);
-
-	int OutputSingleObj(std::string dir, int meshID, std::string name = "SingleObject");
-
-	int OutputMixedObj(std::string dir, std::string name = "MixedObject");
-
 private:
 	struct Pt
 	{
@@ -89,7 +76,7 @@ private:
 		Pt pts[3];
 		cv::Point3d normal;
 		bool hole;
-		int areaCalculated; 
+		int areaCalculated;
 		//0 -> not caculated, -num -> hole area size, -1 -> calculating hole size
 		//+num -> block area size, +1 -> calculating block size
 	};
@@ -152,7 +139,7 @@ private:
 		// v     >1
 		// 1----->2
 		//
-		int mapTriangleXY(int triangleIndex, int &c,int &r, int &updown)
+		int mapTriangleXY(int triangleIndex, int &c, int &r, int &updown)
 		{
 			updown = triangleIndex % 2;
 			int idx_pt = triangleIndex / 2;
@@ -183,7 +170,7 @@ private:
 				cv::Point3d p1 = pts3[1].renderPos - pts3[0].renderPos;
 				cv::Point3d p2 = pts3[2].renderPos - pts3[1].renderPos;
 				cv::Point3d N = p1.cross(p2);
-				if(N.dot(N) < 1e-5)
+				if (N.dot(N) < 1e-5)
 					ret.hole = true;
 				else
 				{
@@ -204,7 +191,22 @@ private:
 			return ret;
 		}
 	};
+public:
+	ObjectGenerator() {};
+	~ObjectGenerator() {};
+	int AddMesh(std::string colorFile, std::string depthFile,
+		int pieceSize = 2, double depthSeg = 10.0, int minimumAreaHole = 2, int minimumAreaBlock = 2, double depthDiv = 1.0, double cameraK = 1e3);
 
+	int AddMesh(cv::Mat color, cv::Mat depth,
+		int pieceSize = 2, double depthSeg = 10.0, int minimumAreaHole = 2, int minimumAreaBlock = 2, double depthDiv = 1.0, double cameraK = 1e3);
+
+	int OutputSingleObj(std::string dir, int meshID, std::string name = "SingleObject");
+
+	int OutputMixedObj(std::string dir, std::string name = "MixedObject");
+
+	std::vector<mesh> meshs;
+
+private:
 	int OutputSegMat(std::string file,int meshID, bool hole);
 
 	//critical: [i,j] may mark 2 triangles, so we use updown = 0/1 to switch each of them
@@ -225,7 +227,7 @@ private:
 
 	
 
-	std::vector<mesh> meshs;
+	
 	int global_id = 1;
 };
 
