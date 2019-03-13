@@ -4,8 +4,8 @@
 @date Dec 29, 2017
 */
 
-#ifndef __H264_ENCODER_SKENCODER_H__
-#define __H264_ENCODER_SKENCODER_H__
+#ifndef __H265_ENCODER_SKENCODER_H__
+#define __H265_ENCODER_SKENCODER_H__
 
 // include std
 #include <cstdio>
@@ -52,15 +52,46 @@ class SKEncoder
 public:
 	enum class FrameType
 	{
-		ABGR = 0,
-		IYUV = 1
+		//YUV420 Planar data, full size Y planar with half size U & half size V (use vector to input these data)
+		IYUV = 0,
+		//8 bit Packed A8B8G8R8.This is a word - ordered format where a pixel is represented by a 32 - bit word with R
+		//in the lowest 8 bits, G in the next 8 bits, B in the 8 bits after that and A in the highest 8 bits.
+		//(use single gpu pointer to input data)
+		ABGR = 1,
+		//8 bit Packed A8R8G8B8.This is a word - ordered format where a pixel is represented by a 32 - bit word with B
+		//in the lowest 8 bits, G in the next 8 bits, R in the 8 bits after that and A in the highest 8 bits.
+		//(use single gpu pointer to input data)
+		ARGB = 2
 	};
 public:
 	SKEncoder() {};
 	~SKEncoder() {};
-	int init(int frameNum, cv::Size imgSize,std::string fileName = "output.h265", FrameType type = FrameType::IYUV, int GpuID = 0);
+	/**
+	@brief init SKEncoder
+	@param int frameNum: total video frame number of the given img list
+	@param cv::Size imgSize: size of the img
+	@param std::string fileName: output file name (default: output.h265)
+	@param FrameType type: See SKEncoder::FrameType (default: IYUV)
+	@param int GpuID: usage of which GPU (default: 0)
+	@return int
+	*/
+	int init(int frameNum, cv::Size imgSize, std::string fileName = "output.h265", FrameType type = FrameType::IYUV, int GpuID = 0);
 
-	int encode(std::vector<void*> gpu_YUVdata3, std::vector<uint32_t> step);
+	/**
+	@brief encode 3 planar data (YUV420 use)
+	@param std::vector<void*> gpu_YUVdata3: YUV data list (gpu ptr)
+	@param std::vector<uint32_t> steps3: gpu pointer step of each planar
+	@return int
+	*/
+	int encode(std::vector<void*> gpu_YUVdata3, std::vector<uint32_t> steps3);
+
+	/**
+	@brief encode single planar data (ABGR & ARGB)
+	@param void *gpu_PackedData: data (gpu ptr)
+	@param uint32_t step: gpu pointer step
+	@return int
+	*/
+	int encode(void *gpu_PackedData, uint32_t step);
 
 	int endEncode();
 
@@ -80,10 +111,11 @@ private:
 	NvEncoderInitParam _encodeCLIOptions;
 	int _nFrameSize, _nFrame;
 	int _stat_step;
-
 	uint64_t _stat_last_time;
+private:
+	int printStatInfo();
 };
 
 
 
-#endif //__H264_ENCODER_SKENCODER_H__
+#endif //__H265_ENCODER_SKENCODER_H__

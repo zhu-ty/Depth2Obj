@@ -47,6 +47,14 @@ namespace SKOpenGL {
 		@return GLuint: shader program ID
 		*/
 		static GLuint LoadShaders(std::string vertex_file_path, std::string fragment_file_path);
+		/**
+		@brief function to create glsl shaders
+		include vertex shader and fragment shader
+		@param std::string vertex: vertex shader
+		@param std::string fragment: fragment shader
+		@return GLuint: shader program ID
+		*/
+		static GLuint CreateShaders(std::string vertex, std::string fragment);
 	private:
 		static void StringReplace(std::string &strBase, std::string strSrc, std::string strDes);
 		static GLuint CompileGLShader(const char *pchShaderName, const char *pchVertexShader, const char *pchFragmentShader);
@@ -64,7 +72,47 @@ namespace SKOpenGL {
 		static bool Mat_GLM2CV(const glm::mat4& glmmat, cv::Mat* cvmat);
 	};
 
-	static class window
+	class callback {
+	public:
+		double pressX;
+		double pressY;
+		double releaseX;
+		double releaseY;
+		double currentX;
+		double currentY;
+		GLfloat xoffset;
+		GLfloat yoffset;
+		float scroll_yoffset;
+		bool key_pressed[1024] = { 0 };
+		bool mouse_key_pressed[1024] = { 0 };
+		bool firstMove = true;
+		double scroll_acc_val = 0;
+		double deltaTime;
+
+		callback(){}
+		callback(const callback& C)
+		{
+			pressX = C.pressX;
+			pressY = C.pressY;
+			releaseX = C.releaseX;
+			releaseY = C.releaseY;
+			currentX = C.currentX;
+			currentY = C.currentY;
+			xoffset = C.xoffset;
+			yoffset = C.yoffset;
+			scroll_yoffset = C.scroll_yoffset;
+			memcpy(key_pressed, C.key_pressed, 1024 * sizeof(bool));
+			memcpy(mouse_key_pressed, C.mouse_key_pressed, 1024 * sizeof(bool));
+			firstMove = C.firstMove;
+			scroll_acc_val = C.scroll_acc_val;
+			deltaTime = C.deltaTime;
+		}
+
+		//clear some int
+		void clear_some();
+	};
+
+	class window
 	{
 	public:
 		enum class RenderMode {
@@ -80,10 +128,28 @@ namespace SKOpenGL {
 				width(1280), height(720),
 				renderMode(RenderMode::Window){}
 		};
-		static int InitGlfw(WindowSetting setting, GLFWwindow* windowPtr, std::string name = "SKOpenGL Window");
+		static int InitGlfw(WindowSetting setting, std::string name = "SKOpenGL Window");
+		static GLFWwindow* GetWindowPtr() { return windowPtr; }
+		static int Render(GLuint textureID, callback &ret);
+	private:
+		static void mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos);
+		static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+		static void mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+		static void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+		static double last_currentTime;
+		static GLuint glWindowVAOID, glWindowVertexBufferID, glWindowUvBufferID, WindowShaderID;
+		static glm::mat4 glWindowMVP;
+		static bool IsGLFWInited;
+		static WindowSetting _setting;
+		static GLFWwindow* windowPtr;
+		static callback control_param;
 	};
 
 	class camera {
+	private:
+		// Calculates the front vector from the Camera's (updated) Eular Angles
+		void updateCameraVectors();
 	public:
 		//direction
 		enum Camera_Movement {
@@ -123,33 +189,11 @@ namespace SKOpenGL {
 		// Constructor with vectors
 		camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f),
 			glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
-			float yaw = -90.0f, float pitch = 0.0f) :
-			Front(glm::vec3(0.0f, 0.0f, -1.0f))
-		{
-			Position = position;
-			WorldUp = up;
-			Yaw = yaw;
-			Pitch = pitch;
-			control_lock[0] = false;
-			control_lock[1] = false;
-			control_lock[2] = false;
-			updateCameraVectors();
-		}
+			float yaw = -90.0f, float pitch = 0.0f);
 		// Constructor with scalar values
 		camera(float posX, float posY, float posZ,
 			float upX, float upY, float upZ,
-			float yaw, float pitch) :
-			Front(glm::vec3(0.0f, 0.0f, -1.0f))
-		{
-			Position = glm::vec3(posX, posY, posZ);
-			WorldUp = glm::vec3(upX, upY, upZ);
-			Yaw = yaw;
-			Pitch = pitch;
-			control_lock[0] = false;
-			control_lock[1] = false;
-			control_lock[2] = false;
-			updateCameraVectors();
-		}
+			float yaw, float pitch);
 
 		// Returns the view matrix calculated using Eular Angles and the LookAt Matrix
 		glm::mat4 GetViewMatrix();
@@ -172,8 +216,6 @@ namespace SKOpenGL {
 		~camera() {}
 
 	private:
-		// Calculates the front vector from the Camera's (updated) Eular Angles
-		void updateCameraVectors();
 		/**
 		@brief Calc a single 3d point to its sherical corrdiantes
 		@param glm::vec3 &pt: a 3d point (x,y,z)
@@ -326,7 +368,9 @@ namespace SKOpenGL {
 		@brief draw some simple line in the 3D space with a VAO & point count
 		@return int(0)
 		*/
-		int draw_line(GLuint program_id, GLuint VAO, int count);
+		int drawLine(GLuint program_id, GLuint VAO, int count);
+
+		int getTextureCPU_RGB(cv::Mat &rgb);
 
 		/**
 		@brief use other's drawing function inside this framebuffer

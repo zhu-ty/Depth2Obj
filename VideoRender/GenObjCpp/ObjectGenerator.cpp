@@ -1,33 +1,5 @@
 #include "ObjectGenerator.h"
 
-//int ObjectGenerator::CalculateAreaStackOverFlow(int c, int r, int updown, std::vector<Tri*>& list_this, mesh &m)
-//{
-//	if (c < 0 || r < 0 || c >= m.col() - 1 || r >= m.row() - 1)
-//		return 0;
-//	int ret = 0;
-//	Tri *t;
-//	t = &(m.meshTRI[m.mapTriangle(c, r, updown)]);
-//	if (t->hole == true && t->areaCalculated == 0)
-//	{
-//		t->areaCalculated = -1;
-//		list_this.push_back(t);
-//		ret += 1;
-//		if (updown == 0)
-//		{
-//			ret += CalculateAreaStackOverFlow(c, r, 1, list_this, m);
-//			ret += CalculateAreaStackOverFlow(c, r - 1, 1, list_this, m);
-//			ret += CalculateAreaStackOverFlow(c + 1, r, 1, list_this, m);
-//		}
-//		else
-//		{
-//			ret += CalculateAreaStackOverFlow(c, r, 0, list_this, m);
-//			ret += CalculateAreaStackOverFlow(c - 1, r, 0, list_this, m);
-//			ret += CalculateAreaStackOverFlow(c, r + 1, 0, list_this, m);
-//		}
-//	}
-//	return ret;
-//}
-
 int ObjectGenerator::OutputSegMat(std::string file, int meshID, bool hole)
 {
 	cv::Mat segMat, segMatColor, segMatColor255;

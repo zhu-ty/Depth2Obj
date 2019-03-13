@@ -11,11 +11,11 @@ int SKEncoder::init(int frameNum, cv::Size imgSize, std::string fileName, FrameT
 	_type = type;
 	_GpuID = GpuID;
 	_fileName = fileName;
-	if (_type != FrameType::IYUV)
-	{
-		SKCommon::errorOutput("Now Only IYUV is supported");
-		return -1;
-	}
+	//if (_type != FrameType::IYUV)
+	//{
+	//	SKCommon::errorOutput("Now Only IYUV is supported");
+	//	return -1;
+	//}
 	if (_imgSize.width <= 0 || _imgSize.width > IMG_MAX_SIDE_LEN || _imgSize.height <= 0 || _imgSize.height > IMG_MAX_SIDE_LEN)
 	{
 		SKCommon::errorOutput(SKCommon::format("imgSize too huge, please resize or ROI. Max side length support: %d", IMG_MAX_SIDE_LEN));
@@ -23,10 +23,12 @@ int SKEncoder::init(int frameNum, cv::Size imgSize, std::string fileName, FrameT
 	}
 
 	_encodeCLIOptions = NvEncoderInitParam("-codec hevc");
+	//NvEncoderInitParam encodeCLIOptions("-codec hevc -rc vbr -bitrate 50M -maxbitrate 100M");
 
-
-	if(_type == FrameType::IYUV)
+	if (_type == FrameType::IYUV)
 		_eFormat = NV_ENC_BUFFER_FORMAT_IYUV;
+	else if (_type == FrameType::ARGB)
+		_eFormat = NV_ENC_BUFFER_FORMAT_ARGB;
 	else if(_type == FrameType::ABGR)
 		_eFormat = NV_ENC_BUFFER_FORMAT_ABGR;
 	
@@ -47,7 +49,6 @@ int SKEncoder::init(int frameNum, cv::Size imgSize, std::string fileName, FrameT
 
 	_fpOut = std::ofstream(_fileName.c_str(), std::ios::out | std::ios::binary);
 	_enc = std::make_shared<NvEncoderCuda>(_cuContext, _imgSize.width, _imgSize.height, _eFormat);
-	//_enc = NvEncoderCuda(_cuContext, _imgSize.width, _imgSize.height, _eFormat);
 	_initializeParams.encodeConfig = &_encodeConfig;
 	_enc->CreateDefaultEncoderParams(&_initializeParams, _encodeCLIOptions.GetEncodeGUID(), _encodeCLIOptions.GetPresetGUID());
 	_encodeCLIOptions.SetInitParams(&_initializeParams, _eFormat);
@@ -61,20 +62,45 @@ int SKEncoder::init(int frameNum, cv::Size imgSize, std::string fileName, FrameT
 	return 0;
 }
 
-int SKEncoder::encode(std::vector<void*> gpu_YUVdata3, std::vector<uint32_t> step)
+int SKEncoder::encode(std::vector<void*> gpu_YUVdata3, std::vector<uint32_t> steps3)
 {
-	if (_encodedFrameNum % _stat_step == 0)
-	{
-		SKCommon::infoOutput(SKCommon::format("%s : Frame:%d, Total:%d, FrameRate:%f fps",
-			_fileName.c_str(), _encodedFrameNum, _frameNum,
-			_stat_step * 1000000.0f / (SKCommon::getCurrentTimeMicroSecond() - _stat_last_time)));
-		_stat_last_time = SKCommon::getCurrentTimeMicroSecond();
-	}
+	printStatInfo();
 	std::vector<std::vector<uint8_t>> vPacket;
 	if (_encodedFrameNum < _frameNum - 1)
 	{
 		const NvEncInputFrame* encoderInputFrame = _enc->GetNextInputFrame();
-		NvEncoderCuda::CopyToDeviceFrame_YUV420(_cuContext, gpu_YUVdata3, step, (CUdeviceptr)encoderInputFrame->inputPtr,
+		NvEncoderCuda::CopyToDeviceFrame_YUV420(_cuContext, gpu_YUVdata3, steps3, (CUdeviceptr)encoderInputFrame->inputPtr,
+			(int)encoderInputFrame->pitch,
+			_enc->GetEncodeWidth(),
+			_enc->GetEncodeHeight(),
+			CU_MEMORYTYPE_DEVICE,
+			encoderInputFrame->bufferFormat,
+			encoderInputFrame->chromaOffsets,
+			encoderInputFrame->numChromaPlanes);
+		_enc->EncodeFrame(vPacket);
+	}
+	else
+	{
+		_enc->EndEncode(vPacket);
+	}
+	_nFrame += (int)vPacket.size();
+	for (std::vector<uint8_t> &packet : vPacket)
+	{
+		// For each encoded packet
+		_fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+	}
+	_encodedFrameNum++;
+	return 0;
+}
+
+int SKEncoder::encode(void * gpu_PackedData, uint32_t step)
+{
+	printStatInfo();
+	std::vector<std::vector<uint8_t>> vPacket;
+	if (_encodedFrameNum < _frameNum - 1)
+	{
+		const NvEncInputFrame* encoderInputFrame = _enc->GetNextInputFrame();
+		NvEncoderCuda::CopyToDeviceFrame(_cuContext, gpu_PackedData, step, (CUdeviceptr)encoderInputFrame->inputPtr,
 			(int)encoderInputFrame->pitch,
 			_enc->GetEncodeWidth(),
 			_enc->GetEncodeHeight(),
@@ -107,5 +133,17 @@ int SKEncoder::endEncode()
 	_enc->DestroyEncoder();
 	_fpOut.close();
 	SKCommon::infoOutput(_fileName + " Encode done!\n");
+	return 0;
+}
+
+int SKEncoder::printStatInfo()
+{
+	if (_encodedFrameNum % _stat_step == 0)
+	{
+		SKCommon::infoOutput(SKCommon::format("%s : Frame:%d, Total:%d, FrameRate:%f fps\n",
+			_fileName.c_str(), _encodedFrameNum, _frameNum,
+			_stat_step * 1000000.0f / (SKCommon::getCurrentTimeMicroSecond() - _stat_last_time)));
+		_stat_last_time = SKCommon::getCurrentTimeMicroSecond();
+	}
 	return 0;
 }

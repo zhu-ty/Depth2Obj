@@ -6,12 +6,10 @@ using namespace std;
 
 GLuint SKOpenGL::shader::LoadShaders(std::string vertex_file_path, std::string fragment_file_path){
 
+#ifdef _WIN32
 	StringReplace(vertex_file_path, "/", "\\");
 	StringReplace(fragment_file_path, "/", "\\");
-
-	// Create the shaders
-	GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
-	GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
+#endif
 	// Read the Vertex Shader code from the file
 	std::string VertexShaderCode;
 	std::ifstream VertexShaderStream(vertex_file_path.c_str(), std::ios::in);
@@ -28,41 +26,56 @@ GLuint SKOpenGL::shader::LoadShaders(std::string vertex_file_path, std::string f
 	// Read the Fragment Shader code from the file
 	std::string FragmentShaderCode;
 	std::ifstream FragmentShaderStream(fragment_file_path.c_str(), std::ios::in);
-	if(FragmentShaderStream.is_open()){
+	if(FragmentShaderStream.is_open())
+	{
 		std::string Line = "";
 		while(getline(FragmentShaderStream, Line))
 			FragmentShaderCode += "\n" + Line;
 		FragmentShaderStream.close();
 	}
+	else
+	{
+		printf("Impossible to open %s. Are you in the right directory ? Don't forget to read the FAQ !\n", fragment_file_path);
+		getchar();
+		return 0;
+	}
+	return CreateShaders(VertexShaderCode, FragmentShaderCode);
+}
+
+GLuint SKOpenGL::shader::CreateShaders(std::string vertex, std::string fragment)
+{
+	// Create the shaders
+	GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
+	GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 	GLint Result = GL_FALSE;
 	int InfoLogLength;
 
 	// Compile Vertex Shader
-	printf("Compiling shader : %s\n", vertex_file_path.c_str());
-	char const * VertexSourcePointer = VertexShaderCode.c_str();
-	glShaderSource(VertexShaderID, 1, &VertexSourcePointer , NULL);
+	//printf("Compiling shader : %s\n", vertex_file_path.c_str());
+	char const * VertexSourcePointer = vertex.c_str();
+	glShaderSource(VertexShaderID, 1, &VertexSourcePointer, NULL);
 	glCompileShader(VertexShaderID);
 
 	// Check Vertex Shader
 	glGetShaderiv(VertexShaderID, GL_COMPILE_STATUS, &Result);
 	glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	if ( InfoLogLength > 0 ){
-		std::vector<char> VertexShaderErrorMessage(InfoLogLength+1);
+	if (InfoLogLength > 0) {
+		std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
 		glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
 		printf("%s\n", &VertexShaderErrorMessage[0]);
 	}
 
 	// Compile Fragment Shader
-	printf("Compiling shader : %s\n", fragment_file_path.c_str());
-	char const * FragmentSourcePointer = FragmentShaderCode.c_str();
-	glShaderSource(FragmentShaderID, 1, &FragmentSourcePointer , NULL);
+	//printf("Compiling shader : %s\n", fragment_file_path.c_str());
+	char const * FragmentSourcePointer = fragment.c_str();
+	glShaderSource(FragmentShaderID, 1, &FragmentSourcePointer, NULL);
 	glCompileShader(FragmentShaderID);
 
 	// Check Fragment Shader
 	glGetShaderiv(FragmentShaderID, GL_COMPILE_STATUS, &Result);
 	glGetShaderiv(FragmentShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	if ( InfoLogLength > 0 ){
-		std::vector<char> FragmentShaderErrorMessage(InfoLogLength+1);
+	if (InfoLogLength > 0) {
+		std::vector<char> FragmentShaderErrorMessage(InfoLogLength + 1);
 		glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
 		printf("%s\n", &FragmentShaderErrorMessage[0]);
 	}
@@ -77,7 +90,7 @@ GLuint SKOpenGL::shader::LoadShaders(std::string vertex_file_path, std::string f
 	// Check the program
 	glGetProgramiv(ProgramID, GL_LINK_STATUS, &Result);
 	glGetProgramiv(ProgramID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	if ( InfoLogLength > 0 ){
+	if (InfoLogLength > 0) {
 		std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
 		glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
 		printf("%s\n", &ProgramErrorMessage[0]);
@@ -85,7 +98,7 @@ GLuint SKOpenGL::shader::LoadShaders(std::string vertex_file_path, std::string f
 
 	glDetachShader(ProgramID, VertexShaderID);
 	glDetachShader(ProgramID, FragmentShaderID);
-	
+
 	glDeleteShader(VertexShaderID);
 	glDeleteShader(FragmentShaderID);
 
@@ -304,8 +317,34 @@ bool SKOpenGL::data::Mat_GLM2CV(const glm::mat4 & glmmat, cv::Mat * cvmat)
 	return true;
 }
 
-int SKOpenGL::window::InitGlfw(WindowSetting setting, GLFWwindow* windowPtr, std::string name)
+inline void SKOpenGL::callback::clear_some()
 {
+	pressX = 0;
+	pressY = 0;
+	releaseX = 0;
+	releaseY = 0;
+	currentX = 0;
+	currentY = 0;
+
+	xoffset = 0;
+	yoffset = 0;
+	scroll_yoffset = 0;
+	deltaTime = 0;
+}
+
+// window static member
+SKOpenGL::callback SKOpenGL::window::control_param; 
+GLFWwindow* SKOpenGL::window::windowPtr;
+SKOpenGL::window::WindowSetting SKOpenGL::window::_setting;
+GLuint SKOpenGL::window::glWindowVAOID, SKOpenGL::window::glWindowVertexBufferID,
+	   SKOpenGL::window::glWindowUvBufferID, SKOpenGL::window::WindowShaderID;
+glm::mat4 SKOpenGL::window::glWindowMVP;
+bool SKOpenGL::window::IsGLFWInited = false;
+double SKOpenGL::window::last_currentTime = 0;
+
+int SKOpenGL::window::InitGlfw(WindowSetting setting, std::string name)
+{
+	_setting = setting;
 	if (!glfwInit()) {
 		SKCommon::errorOutput(DEBUG_STRING + "Failed to initialize GLFW");
 		return -1;
@@ -321,22 +360,22 @@ int SKOpenGL::window::InitGlfw(WindowSetting setting, GLFWwindow* windowPtr, std
 	cv::Size WindowSize, ScreenSize;
 	auto monitors = glfwGetMonitors(&monitor_count);
 	GLFWmonitor* special_monitor = glfwGetPrimaryMonitor();
-	if (setting.renderMode == RenderMode::FullScreen)
+	if (_setting.renderMode == RenderMode::FullScreen)
 	{
 		for (int i = 0; i < monitor_count; i++)
 		{
 			const GLFWvidmode * _mode = glfwGetVideoMode(monitors[i]);
-			if (_mode->width == setting.width)
+			if (_mode->width == _setting.width)
 			{
 				special_monitor = monitors[i];
 				break;
 			}
 		}
 		const GLFWvidmode * _mode = glfwGetVideoMode(special_monitor);
-		setting.width = _mode->width;
-		setting.height = _mode->height;
+		_setting.width = _mode->width;
+		_setting.height = _mode->height;
 	}
-	WindowSize = cv::Size(setting.width, setting.height);
+	WindowSize = cv::Size(_setting.width, _setting.height);
 
 	// get screen resolution
 	const GLFWvidmode * mode = glfwGetVideoMode(special_monitor);
@@ -344,9 +383,9 @@ int SKOpenGL::window::InitGlfw(WindowSetting setting, GLFWwindow* windowPtr, std
 	ScreenSize.height = mode->height;
 	SKCommon::infoOutput(SKCommon::format("Screen resolution: <%d, %d>, window resolution: <%d, %d>, render mode: %s\n",
 		ScreenSize.width, ScreenSize.height, WindowSize.width, WindowSize.height,
-		setting.renderMode == RenderMode::Window ? "Window" : "Full Screen"));
+		_setting.renderMode == RenderMode::Window ? "Window" : "Full Screen"));
 	// Open a window and create its OpenGL context
-	if (setting.renderMode == RenderMode::Window)
+	if (_setting.renderMode == RenderMode::Window)
 		windowPtr = glfwCreateWindow(WindowSize.width, WindowSize.height, name.c_str(), NULL, NULL);
 	else windowPtr = glfwCreateWindow(ScreenSize.width, ScreenSize.height, name.c_str(), special_monitor, NULL);
 	if (windowPtr == nullptr)
@@ -357,14 +396,14 @@ int SKOpenGL::window::InitGlfw(WindowSetting setting, GLFWwindow* windowPtr, std
 	}
 	glfwMakeContextCurrent(windowPtr);
 
-	//Callback & Cursor setting please do it out side, here is some sample:
+	//Cursor setting please do it out side, here is some sample:
 	//// Ensure we can capture the escape key being pressed below
 	//glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	//// set control callback function
-	//glfwSetMouseButtonCallback(Window, mouse_button_callback);
-	//glfwSetScrollCallback(Window, mouse_scroll_callback);
-	//glfwSetCursorPosCallback(Window, mouse_cursor_callback);
-	//glfwSetKeyCallback(Window, keyboard_callback);
+	glfwSetMouseButtonCallback(windowPtr, mouse_button_callback);
+	glfwSetScrollCallback(windowPtr, mouse_scroll_callback);
+	glfwSetCursorPosCallback(windowPtr, mouse_cursor_callback);
+	glfwSetKeyCallback(windowPtr, keyboard_callback);
 
 	// Initialize GLEW
 	glewExperimental = true; // Needed for core profile
@@ -373,7 +412,188 @@ int SKOpenGL::window::InitGlfw(WindowSetting setting, GLFWwindow* windowPtr, std
 		SKCommon::errorOutput(DEBUG_STRING + " Failed to initialize GLEW.");
 		return -3;
 	}
+
+	static const GLfloat g_quad_vertex_buffer_data[] = {
+		0.0f, 0.0f, 0.0f,
+		WindowSize.width, 0.0f, 0.0f,
+		WindowSize.width, WindowSize.height, 0.0f,
+		WindowSize.width, WindowSize.height, 0.0f,
+		0.0f, WindowSize.height, 0.0f,
+		0.0f, 0.0f, 0.0f
+	};
+	// The fullscreen quad's FBO
+	static const GLfloat g_quad_uv_buffer_data[] = {
+		0.0f, 0.0f,
+		1.0f, 0.0f,
+		1.0f,  1.0f,
+		1.0f,  1.0f,
+		0.0f, 1.0f,
+		0.0f,  0.0f
+	};
+	// bind
+	glGenVertexArrays(1, &glWindowVAOID);
+	glBindVertexArray(glWindowVAOID);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+
+	glGenBuffers(1, &glWindowVertexBufferID);
+	glBindBuffer(GL_ARRAY_BUFFER, glWindowVertexBufferID);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	glGenBuffers(1, &glWindowUvBufferID);
+	glBindBuffer(GL_ARRAY_BUFFER, glWindowUvBufferID);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_uv_buffer_data), g_quad_uv_buffer_data, GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	glm::mat4 View = glm::lookAt(
+		glm::vec3(WindowSize.width / 2, WindowSize.height / 2, WindowSize.height / 2), // camera position
+		glm::vec3(WindowSize.width / 2, WindowSize.height / 2, 0), // look at position
+		glm::vec3(0, 1, 0) // head is up (set to 0,-1,0 to look upside-down)
+	);
+	glm::mat4 Model = glm::mat4(1.0);
+	glm::mat4 Projection2 = 
+		glm::perspective(glm::radians(90.0f),
+		(float)WindowSize.width / (float)WindowSize.height,
+		0.1f, static_cast<float>(WindowSize.height));
+	glWindowMVP = Projection2 * View * Model;
+
+	std::string verShader = 
+"\
+#version 450 core \n\
+layout(location = 0) in vec3 vertexPosition;\n\
+layout(location = 1) in vec2 vertexUV;\n\
+out vec2 UV;\n\
+uniform mat4 MVP;\n\
+void main() {\n\
+	gl_Position = MVP * vec4(vertexPosition, 1);\n\
+	UV = vertexUV;\n\
+}\n\
+";
+	std::string fraShader =
+"\
+#version 450 core\n\
+in vec2 UV;\n\
+out vec4 colorRGBA;\n\
+uniform sampler2D myTextureSampler;\n\
+void main() {\n\
+	colorRGBA = texture(myTextureSampler, UV).rgba;\n\
+}\n\
+";
+	WindowShaderID = shader::CreateShaders(verShader, fraShader);
+
+	IsGLFWInited = true;
 	return 0;
+}
+
+int SKOpenGL::window::Render(GLuint textureID, callback &ret)
+{
+	glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+	// Enable depth test
+	glEnable(GL_DEPTH_TEST);
+	// Accept fragment if it closer to the camera than the former one
+	glDepthFunc(GL_LESS);
+	// RGBA texture blending
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	double currentTime = glfwGetTime();
+	double deltaTime = currentTime - last_currentTime;
+	last_currentTime = currentTime;
+
+	GLuint MatrixID = glGetUniformLocation(WindowShaderID, "MVP");
+	GLuint TextureID = glGetUniformLocation(WindowShaderID, "myTextureSampler");
+	// Render to the screen
+	glViewport(0, 0, _setting.width, _setting.height);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	// Clear the screen
+	glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Use our shader
+	glUseProgram(WindowShaderID);
+	// in the "MVP" uniform
+	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &glWindowMVP[0][0]);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	glUniform1i(TextureID, 0);
+	glBindVertexArray(glWindowVAOID);
+	glDrawArrays(GL_TRIANGLES, 0, 2 * 3); 
+
+	glfwSwapBuffers(windowPtr);
+	control_param.clear_some();
+	glfwPollEvents();
+	ret = control_param;
+	ret.deltaTime = deltaTime;
+	return 0;
+}
+
+void SKOpenGL::window::mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos) {
+
+	if (control_param.firstMove) // 这个bool变量一开始是设定为true的
+	{
+		control_param.currentX = xpos;
+		control_param.currentY = ypos;
+		control_param.firstMove = false;
+	}
+
+	control_param.xoffset = xpos - control_param.currentX;
+	control_param.yoffset = control_param.currentY - ypos; // 注意这里是相反的，因为y坐标的范围是从下往上的
+	control_param.currentX = xpos;
+	control_param.currentY = ypos;
+
+}
+
+void SKOpenGL::window::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (action == GLFW_PRESS)
+		control_param.mouse_key_pressed[button] = true;
+	else if (action == GLFW_RELEASE)
+		control_param.mouse_key_pressed[button] = false;
+	return;
+}
+
+void SKOpenGL::window::mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset) 
+{
+	control_param.scroll_yoffset = yoffset;
+}
+
+void SKOpenGL::window::keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action == GLFW_PRESS)
+		control_param.key_pressed[key] = true;
+	else if (action == GLFW_RELEASE)
+		control_param.key_pressed[key] = false;
+}
+
+SKOpenGL::camera::camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) :
+	Front(glm::vec3(0.0f, 0.0f, -1.0f))
+{
+	Position = position;
+	WorldUp = up;
+	Yaw = yaw;
+	Pitch = pitch;
+	control_lock[0] = false;
+	control_lock[1] = false;
+	control_lock[2] = false;
+	updateCameraVectors();
+}
+
+SKOpenGL::camera::camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) :
+	Front(glm::vec3(0.0f, 0.0f, -1.0f))
+{
+	Position = glm::vec3(posX, posY, posZ);
+	WorldUp = glm::vec3(upX, upY, upZ);
+	Yaw = yaw;
+	Pitch = pitch;
+	control_lock[0] = false;
+	control_lock[1] = false;
+	control_lock[2] = false;
+	updateCameraVectors();
 }
 
 inline glm::mat4 SKOpenGL::camera::GetViewMatrix()
@@ -631,7 +851,7 @@ int SKOpenGL::framebuffer::drawLayers(std::vector<Layer> layers)
 	return 0;
 }
 
-int SKOpenGL::framebuffer::draw_line(GLuint program_id, GLuint VAO, int count)
+int SKOpenGL::framebuffer::drawLine(GLuint program_id, GLuint VAO, int count)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, glFboID);
 	glBindRenderbuffer(GL_RENDERBUFFER, glDboID);
@@ -648,6 +868,19 @@ int SKOpenGL::framebuffer::draw_line(GLuint program_id, GLuint VAO, int count)
 	return 0;
 }
 
+int SKOpenGL::framebuffer::getTextureCPU_RGB(cv::Mat & rgb)
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, glFboID);
+	glBindRenderbuffer(GL_RENDERBUFFER, glDboID);
+	char* pixels = new char[width * height * 3];
+	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	cv::Mat img(cv::Size(width, height), CV_8UC3, pixels);
+	rgb = img.clone();
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	return 0;
+}
+
 SKOpenGL::framebuffer::~framebuffer()
 {
 	if (inited)
@@ -656,3 +889,4 @@ SKOpenGL::framebuffer::~framebuffer()
 		glDeleteTextures(1, &glTextureID);
 	}
 }
+
