@@ -63,11 +63,19 @@ namespace SKOpenGL {
 	static class data
 	{
 	public:
-		static int GenerateVAO(GLuint & VAO, GLuint LVBO, GLuint UVBO, unsigned int * vbo_data, int pt_count, GLuint &EBO, int lvboSize = 3, int uvboSize = 2);
+		static int GenerateVAO(GLuint & VAO, GLuint LVBO, GLuint UVBO, unsigned int * ebo_data, int pt_count, GLuint &EBO, int lvboSize = 3, int uvboSize = 2);
 		static int GenerateVAO(GLuint & VAO, GLuint LVBO, GLuint UVBO, int lvboSize = 3, int uvboSize = 2);
 		static int Upload3DPoints(GLuint & LVBO, GLuint & UVBO, float * pt_loc, float * pt_uv, int pt_size, int lvboSize = 3, int uvboSize = 2);
+		static int DeleteBuffer(GLuint VBO);
+		static int DeleteTexure(GLuint TEX);
+		static int DeleteArrays(GLuint VAO);
+
+		//with BGR order
 		static int LoadTexture(std::string file_path, GLuint &texture_id);
+		static int LoadTexture(cv::Mat file, GLuint &texture_id);
 		static int LoadTextureMask(std::string file_path, std::string mask_path, GLuint &texture_id);
+		static int LoadTextureMask(cv::Mat file,cv::Mat mask, GLuint &texture_id);
+
 		static bool Mat_CV2GLM(const cv::Mat& cvmat, glm::mat4* glmmat);
 		static bool Mat_GLM2CV(const glm::mat4& glmmat, cv::Mat* cvmat);
 	};

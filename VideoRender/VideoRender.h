@@ -11,6 +11,7 @@ Generate 3D Object Video Frames data
 
 #include "SKCommon.hpp"
 #include "SKOpenGL.hpp"
+#include "ObjectGenerator.h"
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -22,12 +23,13 @@ public:
 	ObjectVideoRender() {};
 	~ObjectVideoRender() {};
 
-	int Init(cv::Size finalSize, double previewRatio = 0.5);
+	int Init(cv::Size finalSize,double cameraK = 1e3,double E = 2.7e4, double previewRatio = 0.5);
 	int RenderFrame(cv::Mat color, cv::Mat disparity, SKOpenGL::camera cam, SKOpenGL::callback &recall);
-	int SaveImgs();
-	int SaveVideos();
-	int GetNewestFrame();
+	int SaveImgs(std::string dir = "./VideoFrames");
+	int SaveVideos() { SKCommon::warningOutput("Havent implemented"); };
+	int GetNewestFrame(cv::Mat &ret);
 private:
+	double _cameraK, _stereoE;
 	SKOpenGL::framebuffer _render_buffer;
 	std::vector<cv::Mat> _buffered_frame;
 	cv::Size _size;

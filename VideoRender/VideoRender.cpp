@@ -1,7 +1,9 @@
 #include "VideoRender.h"
 
-int ObjectVideoRender::Init(cv::Size finalSize, double previewRatio)
+int ObjectVideoRender::Init(cv::Size finalSize, double cameraK, double E, double previewRatio)
 {
+	_cameraK = cameraK;
+	_stereoE = E;
 	SKOpenGL::window::WindowSetting set;
 	set.width = finalSize.width * previewRatio;
 	set.height = finalSize.height * previewRatio;
@@ -34,5 +36,74 @@ void main() {\n\
 }\n\
 ";
 	_shaderID = SKOpenGL::shader::CreateShaders(verShader, fraShader);
+	return 0;
+}
+
+int ObjectVideoRender::RenderFrame(cv::Mat color, cv::Mat disparity, SKOpenGL::camera cam, SKOpenGL::callback & recall)
+{
+	std::vector<float> ldata, udata;
+	std::vector<int> edata;
+	GLuint VAO, LVBO, UVBO, TEX, EBO;
+	ObjectGenerator og;
+	og.AddMeshDisparity(color, disparity, _stereoE, _cameraK);
+	og.OutputMixedData(ldata, udata, edata);
+	//og.OutputMixedObj("VideoFrames");
+
+	SKOpenGL::data::LoadTexture(color, TEX);
+	SKOpenGL::data::Upload3DPoints(LVBO, UVBO, ldata.data(), udata.data(), ldata.size() / 3);
+	SKOpenGL::data::GenerateVAO(VAO, LVBO, UVBO, (unsigned int*)edata.data(), edata.size(), EBO);
+
+	SKOpenGL::framebuffer::Layer lay;
+	lay.programID = _shaderID;
+	lay.colorAppen = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	lay.colorCorre = glm::mat4();
+	lay.depOption = static_cast<SKOpenGL::framebuffer::DepthOption>(0);
+	lay.order = SKOpenGL::framebuffer::RenderOrder::Whatever;
+	lay.model = glm::mat4();
+	lay.texID = TEX;
+	lay.triCount = edata.size() / 3;
+	lay.glBufs.VaoID = VAO;
+	lay.glBufs.LVBO = LVBO;
+	lay.glBufs.UVBO = UVBO;
+	lay.glBufs.EboID = EBO;
+	lay.renDataType = SKOpenGL::framebuffer::RenderDataType::Element;
+
+	_render_buffer.Camera = cam;
+	_render_buffer.clearBuffer();
+	_render_buffer.drawLayers(std::vector<SKOpenGL::framebuffer::Layer>({ lay }));
+
+	cv::Mat drawed;
+	_render_buffer.getTextureCPU_RGB(drawed);
+	_buffered_frame.push_back(drawed);
+
+	SKOpenGL::window::Render(_render_buffer.glTextureID, recall);
+
+	SKOpenGL::data::DeleteTexure(TEX);
+	SKOpenGL::data::DeleteArrays(VAO);
+	SKOpenGL::data::DeleteBuffer(EBO);
+	SKOpenGL::data::DeleteBuffer(LVBO);
+	SKOpenGL::data::DeleteBuffer(UVBO);
+
+	return 0;
+}
+
+int ObjectVideoRender::SaveImgs(std::string dir)
+{
+	SKCommon::mkdir(dir);
+	for (int i = 0; i < _buffered_frame.size(); i++)
+	{
+		cv::Mat bgr;
+		cv::cvtColor(_buffered_frame[i], bgr, cv::COLOR_RGB2BGR);
+		cv::imwrite(SKCommon::format("%s/%5d.png", dir.c_str(), i), bgr);
+	}
+	_buffered_frame.clear();
+	return 0;
+}
+
+int ObjectVideoRender::GetNewestFrame(cv::Mat & ret)
+{
+	if (_buffered_frame.size() <= 0)
+		return -1;
+	ret = _buffered_frame[_buffered_frame.size() - 1];
 	return 0;
 }

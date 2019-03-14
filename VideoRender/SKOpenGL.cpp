@@ -172,7 +172,7 @@ GLuint SKOpenGL::shader::CompileGLShader(const char * pchShaderName, const char 
 	return unProgramID;
 }
 
-int SKOpenGL::data::GenerateVAO(GLuint & VAO, GLuint LVBO, GLuint UVBO, unsigned int * vbo_data, int pt_count, GLuint & EBO, int lvboSize, int uvboSize)
+int SKOpenGL::data::GenerateVAO(GLuint & VAO, GLuint LVBO, GLuint UVBO, unsigned int * ebo_data, int pt_count, GLuint & EBO, int lvboSize, int uvboSize)
 {
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
@@ -180,7 +180,7 @@ int SKOpenGL::data::GenerateVAO(GLuint & VAO, GLuint LVBO, GLuint UVBO, unsigned
 	glEnableVertexAttribArray(1);
 	glGenBuffers(1, &EBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, pt_count * 3 * 4, vbo_data, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, pt_count * sizeof(unsigned int), ebo_data, GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ARRAY_BUFFER, LVBO);
 	glVertexAttribPointer(0, lvboSize, GL_FLOAT, GL_FALSE, lvboSize * sizeof(GLfloat), (void*)0);
@@ -224,12 +224,41 @@ int SKOpenGL::data::Upload3DPoints(GLuint & LVBO, GLuint & UVBO, float * pt_loc,
 	return 0;
 }
 
+int SKOpenGL::data::DeleteBuffer(GLuint VBO)
+{
+	glDeleteBuffers(1, &VBO);
+	return 0;
+}
+
+int SKOpenGL::data::DeleteTexure(GLuint TEX)
+{
+	glDeleteTextures(1, &TEX);
+	return 0;
+}
+
+int SKOpenGL::data::DeleteArrays(GLuint VAO)
+{
+	glDeleteVertexArrays(1, &VAO);
+	return 0;
+}
+
 int SKOpenGL::data::LoadTexture(std::string file_path, GLuint &texture_id)
 {
 	cv::Mat img = cv::imread(file_path, cv::IMREAD_UNCHANGED);
-	if (img.channels() != 3 || ((img.type() & CV_MAT_DEPTH_MASK) != CV_8U))
+	return LoadTexture(img, texture_id);
+}
+
+int SKOpenGL::data::LoadTexture(cv::Mat file, GLuint & texture_id)
+{
+	//cv::Mat img = file;
+	cv::Mat img;
+	cv::cvtColor(file, img, cv::COLOR_BGR2BGRA); //To make sure we upload data with 4x
+	// More info : https://www.khronos.org/opengl/wiki/Common_Mistakes#Texture_upload_and_pixel_reads
+	//cv::resize(img, img, cv::Size(img.cols / 4 * 4, img.rows / 4 * 4));
+
+	if (file.channels() != 3 || ((file.type() & CV_MAT_DEPTH_MASK) != CV_8U))
 	{
-		SKCommon::errorOutput(DEBUG_STRING + "Only 3 channel uchar RGB image is now supported.");
+		SKCommon::errorOutput(DEBUG_STRING + "Only 3 channel uchar BGR image is now supported.");
 		return -1;
 	}
 	glGenTextures(1, &texture_id);
@@ -244,11 +273,15 @@ int SKOpenGL::data::LoadTexture(std::string file_path, GLuint &texture_id)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.cols, img.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, img.data);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.cols, img.rows, 0, GL_BGRA, GL_UNSIGNED_BYTE, img.data);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
+	//int w, h;
+	//int miplevel = 0;
+	//glGetTexLevelParameteriv(GL_TEXTURE_2D, miplevel, GL_TEXTURE_WIDTH, &w);
+	//glGetTexLevelParameteriv(GL_TEXTURE_2D, miplevel, GL_TEXTURE_HEIGHT, &h);
+
 	glBindTexture(GL_TEXTURE_2D, 0);
-	return texture_id;
 	return 0;
 }
 
@@ -262,6 +295,12 @@ int SKOpenGL::data::LoadTextureMask(std::string file_path, std::string mask_path
 	}
 	cv::Mat img = cv::imread(file_path, cv::IMREAD_UNCHANGED);
 	cv::Mat mask = cv::imread(mask_path, cv::IMREAD_UNCHANGED);
+	return LoadTextureMask(img, mask, texture_id);
+}
+
+int SKOpenGL::data::LoadTextureMask(cv::Mat file, cv::Mat mask, GLuint & texture_id)
+{
+	cv::Mat img = file;
 	if (img.channels() != 3 || mask.channels() != 1 || ((img.type() & CV_MAT_DEPTH_MASK) != CV_8U) || ((mask.type() & CV_MAT_DEPTH_MASK) != CV_8U))
 	{
 		SKCommon::errorOutput(DEBUG_STRING + "Only 3 channel uchar texture & 1 channel uchar mask is now supported.");
@@ -289,7 +328,7 @@ int SKOpenGL::data::LoadTextureMask(std::string file_path, std::string mask_path
 			else
 				img_full_data[i * img.cols * 4 + j * 4 + 3] = 255;
 		}
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.cols, img.rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_full_data);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.cols, img.rows, 0, GL_BGRA, GL_UNSIGNED_BYTE, img_full_data);
 	delete[] img_full_data;
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -423,12 +462,12 @@ int SKOpenGL::window::InitGlfw(WindowSetting setting, std::string name)
 	};
 	// The fullscreen quad's FBO
 	static const GLfloat g_quad_uv_buffer_data[] = {
-		0.0f, 0.0f,
-		1.0f, 0.0f,
-		1.0f,  1.0f,
-		1.0f,  1.0f,
 		0.0f, 1.0f,
-		0.0f,  0.0f
+		1.0f, 1.0f,
+		1.0f,  0.0f,
+		1.0f,  0.0f,
+		0.0f, 0.0f,
+		0.0f,  1.0f
 	};
 	// bind
 	glGenVertexArrays(1, &glWindowVAOID);
@@ -596,7 +635,7 @@ SKOpenGL::camera::camera(float posX, float posY, float posZ, float upX, float up
 	updateCameraVectors();
 }
 
-inline glm::mat4 SKOpenGL::camera::GetViewMatrix()
+glm::mat4 SKOpenGL::camera::GetViewMatrix()
 {
 	if (__static__matrix_mode == false)
 		return glm::lookAt(Position, Position + Front, Up);
@@ -604,7 +643,7 @@ inline glm::mat4 SKOpenGL::camera::GetViewMatrix()
 		return __static__view;
 }
 
-inline glm::mat4 SKOpenGL::camera::GetProjectionMatrix()
+glm::mat4 SKOpenGL::camera::GetProjectionMatrix()
 {
 	if (__static__matrix_mode == false)
 		return glm::perspective(glm::radians(Zoom), aspect,
@@ -613,7 +652,7 @@ inline glm::mat4 SKOpenGL::camera::GetProjectionMatrix()
 		return __static__project;
 }
 
-inline void SKOpenGL::camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
+void SKOpenGL::camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 {
 	if (control_lock[0] == false)
 	{
@@ -633,7 +672,7 @@ inline void SKOpenGL::camera::ProcessKeyboard(Camera_Movement direction, float d
 	}
 }
 
-inline void SKOpenGL::camera::ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch)
+void SKOpenGL::camera::ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch)
 {
 	if (control_lock[1] == false)
 	{
@@ -657,7 +696,7 @@ inline void SKOpenGL::camera::ProcessMouseMovement(float xoffset, float yoffset,
 	}
 }
 
-inline void SKOpenGL::camera::ProcessMouseScroll(float yoffset)
+void SKOpenGL::camera::ProcessMouseScroll(float yoffset)
 {
 	if (control_lock[2] == false)
 	{
@@ -672,7 +711,7 @@ inline void SKOpenGL::camera::ProcessMouseScroll(float yoffset)
 	}
 }
 
-inline void SKOpenGL::camera::ZoomReset()
+void SKOpenGL::camera::ZoomReset()
 {
 	if (control_lock[2] == false)
 	{
@@ -680,7 +719,7 @@ inline void SKOpenGL::camera::ZoomReset()
 	}
 }
 
-inline SKOpenGL::camera::SphericalRect2f SKOpenGL::camera::GetFovRect()
+SKOpenGL::camera::SphericalRect2f SKOpenGL::camera::GetFovRect()
 {
 	SphericalRect2f ret;
 	glm::vec3 look_at_sp = calc_spherical_coordinates(Front);
@@ -691,7 +730,7 @@ inline SKOpenGL::camera::SphericalRect2f SKOpenGL::camera::GetFovRect()
 	return ret;
 }
 
-inline void SKOpenGL::camera::updateCameraVectors()
+void SKOpenGL::camera::updateCameraVectors()
 {
 	// Calculate the new Front vector
 	glm::vec3 front;
@@ -706,7 +745,7 @@ inline void SKOpenGL::camera::updateCameraVectors()
 	Up = glm::normalize(glm::cross(Right, Front));
 }
 
-inline glm::vec3 SKOpenGL::camera::calc_spherical_coordinates(glm::vec3 & pt)
+glm::vec3 SKOpenGL::camera::calc_spherical_coordinates(glm::vec3 & pt)
 {
 	glm::vec3 ret;
 	float x = pt.x;

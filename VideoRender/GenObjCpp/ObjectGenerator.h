@@ -21,6 +21,14 @@ Generate Object data & output
 #include <opencv2\opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
 
+#define OBJ_DEF_CAMERA_K 1000.0
+#define OBJ_DEF_PIECE_SIZE 2
+#define OBJ_DEF_DEPTH_SEG_COS 0.02
+#define OBJ_DEF_MIN_HOLE_AREA 200
+#define OBJ_DEF_MIN_BLOC_AREA 200
+#define OBJ_DEF_DEPTH_DIV 1.0
+
+
 class ObjectGenerator
 {
 	/* index : col then row
@@ -195,14 +203,25 @@ public:
 	ObjectGenerator() {};
 	~ObjectGenerator() {};
 	int AddMesh(std::string colorFile, std::string depthFile,
-		int pieceSize = 2, double depthSeg = 0.1, int minimumAreaHole = 2, int minimumAreaBlock = 2, double depthDiv = 1.0, double cameraK = 1e3);
+		double cameraK = OBJ_DEF_CAMERA_K, int pieceSize = OBJ_DEF_PIECE_SIZE,
+		double depthSeg = OBJ_DEF_DEPTH_SEG_COS, int minimumAreaHole = OBJ_DEF_MIN_HOLE_AREA,
+		int minimumAreaBlock = OBJ_DEF_MIN_BLOC_AREA, double depthDiv = OBJ_DEF_DEPTH_DIV);
 
 	int AddMesh(cv::Mat color, cv::Mat depth,
-		int pieceSize = 2, double depthSeg = 0.1, int minimumAreaHole = 2, int minimumAreaBlock = 2, double depthDiv = 1.0, double cameraK = 1e3);
+		double cameraK = OBJ_DEF_CAMERA_K, int pieceSize = OBJ_DEF_PIECE_SIZE,
+		double depthSeg = OBJ_DEF_DEPTH_SEG_COS, int minimumAreaHole = OBJ_DEF_MIN_HOLE_AREA,
+		int minimumAreaBlock = OBJ_DEF_MIN_BLOC_AREA, double depthDiv = OBJ_DEF_DEPTH_DIV);
+
+	int AddMeshDisparity(cv::Mat color, cv::Mat disparity,
+		double E, double cameraK = OBJ_DEF_CAMERA_K, int pieceSize = OBJ_DEF_PIECE_SIZE,
+		double depthSeg = OBJ_DEF_DEPTH_SEG_COS, int minimumAreaHole = OBJ_DEF_MIN_HOLE_AREA,
+		int minimumAreaBlock = OBJ_DEF_MIN_BLOC_AREA, double depthDiv = OBJ_DEF_DEPTH_DIV);
 
 	int OutputSingleObj(std::string dir, int meshID, std::string name = "SingleObject");
 
 	int OutputMixedObj(std::string dir, std::string name = "MixedObject");
+
+	int OutputMixedData(std::vector<float> &loc_data, std::vector<float> &uv_data, std::vector<int> &ebo_data);
 
 	std::vector<mesh> meshs;
 

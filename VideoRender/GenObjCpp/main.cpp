@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
 		int p, mh, mb;
 		double d, div;
 		fscanf(in, "%s %s %d %lf %d %d %lf\n", color, depth, &p, &d, &mh, &mb, &div);
-		OG.AddMesh(color, depth, p, d, mh, mb, div, K);
+		OG.AddMesh(color, depth, K, p, d, mh, mb, div);
 	}
 	fclose(in);
 	

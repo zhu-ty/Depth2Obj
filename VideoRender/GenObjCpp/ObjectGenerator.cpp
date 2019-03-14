@@ -78,16 +78,16 @@ ObjectGenerator::Tri * ObjectGenerator::getTri(int c, int r, int updown, mesh & 
 }
 
 
-int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv, double cameraK)
+int ObjectGenerator::AddMesh(std::string colorFile, std::string depthFile, double cameraK, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv)
 {
 	cv::Mat c, d;
 	c = cv::imread(colorFile);
 	d = cv::imread(depthFile, CV_LOAD_IMAGE_UNCHANGED);
-	this->AddMesh(c, d, pieceSize, depthSeg, minimumAreaHole, minimumAreaBlock, depthDiv, cameraK);
+	this->AddMesh(c, d, cameraK, pieceSize, depthSeg, minimumAreaHole, minimumAreaBlock, depthDiv);
 	return 0;
 }
 
-int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv, double cameraK)
+int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, double cameraK, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv)
 {
 	if (depth.type() != CV_16UC1)
 	{
@@ -184,6 +184,28 @@ int ObjectGenerator::AddMesh(cv::Mat color, cv::Mat depth, int pieceSize, double
 		}
 	}
 	meshs.push_back(m);
+	return 0;
+}
+
+int ObjectGenerator::AddMeshDisparity(cv::Mat color, cv::Mat disparity, double E, double cameraK, int pieceSize, double depthSeg, int minimumAreaHole, int minimumAreaBlock, double depthDiv)
+{
+	if (disparity.type() != CV_32FC1)
+	{
+		SysUtil::errorOutput("ObjectGenerator::AddMeshDisparity only depth = CV_32FC1 supported.");
+		return -1;
+	}
+	cv::Mat d1 = 1. / disparity;
+	cv::Mat d2 = d1 * E;
+	d2.convertTo(d2, CV_32FC1);
+	for(int x = 0;x < d2.cols;x ++)
+		for (int y = 0; y < d2.rows; y++)
+		{
+			float v = d2.at<float>(cv::Point(x, y));
+			d2.at<float>(cv::Point(x, y)) = (v > 50000) ? 50000 : v;
+		}
+	cv::Mat depth;
+	d2.convertTo(depth, CV_16UC1);
+	this->AddMesh(color, depth, cameraK, pieceSize, depthSeg, minimumAreaHole, minimumAreaBlock, depthDiv);
 	return 0;
 }
 
@@ -322,6 +344,33 @@ int ObjectGenerator::OutputMixedObj(std::string dir, std::string name)
 	{
 		this->OutputSingleObj(dirname, meshID, SysUtil::format("Single%d", meshID));
 	}
+
+	return 0;
+}
+
+int ObjectGenerator::OutputMixedData(std::vector<float> &loc_data, std::vector<float> &uv_data, std::vector<int> &ebo_data)
+{
+	loc_data.clear();
+	uv_data.clear();
+	ebo_data.clear();
+	for (int meshID = 0; meshID < meshs.size(); meshID++)
+		for (int i = 0; i < meshs[meshID].meshPT.size(); i++)
+		{
+			loc_data.push_back((double)meshs[meshID].meshPT[i].renderPos.x);
+			loc_data.push_back((double)meshs[meshID].meshPT[i].renderPos.y);
+			loc_data.push_back(-(double)meshs[meshID].meshPT[i].renderPos.z);
+			uv_data.push_back(meshs[meshID].meshPT[i].imgPos.x / (double)meshs[meshID].w);
+			uv_data.push_back(meshs[meshID].meshPT[i].imgPos.y / (double)meshs[meshID].h);
+		}
+	for (int meshID = 0; meshID < meshs.size(); meshID++)
+		for (int i = 0; i < meshs[meshID].meshTRI.size(); i++)
+			if ((meshs[meshID].meshTRI[i].hole == false && meshs[meshID].meshTRI[i].areaCalculated > meshs[meshID].minimumAreaBlock) ||
+				(meshs[meshID].meshTRI[i].hole == true && abs(meshs[meshID].meshTRI[i].areaCalculated) < meshs[meshID].minimumAreaHole))
+			{
+				ebo_data.push_back(meshs[meshID].meshTRI[i].pts[0].globalIdx - 1);
+				ebo_data.push_back(meshs[meshID].meshTRI[i].pts[1].globalIdx - 1);
+				ebo_data.push_back(meshs[meshID].meshTRI[i].pts[2].globalIdx - 1);
+			}
 
 	return 0;
 }

@@ -26,7 +26,6 @@ message(
                 there shall not be any bug.
       
   ")
-
 cmake_minimum_required (VERSION 3.10)
 set(name "VideoRender")
 project ( ${name} )
@@ -35,6 +34,10 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 # c++ version
 set (CMAKE_CXX_STANDARD 11)
 set (WIN_LIB_PATH "E:/libs")
+if(MSVC)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif()
+
 #OpenCV
 if ( WIN32 )
     set(OpenCV_DIR ${WIN_LIB_PATH}/OpenCV/x64/vc14/lib)
