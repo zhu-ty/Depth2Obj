@@ -34,7 +34,8 @@ int main(int argc, char* argv[])
 		cam.ProcessKeyboard(SKOpenGL::camera::FORWARD, 35);
 		SKCommon::infoOutput(SKCommon::format("%d", i));
 	}
-	ovr.SaveImgs();
+	//ovr.SaveImgs();
+	ovr.SaveVideos();
 	system("pause");
 
 	return 0;

@@ -1,16 +1,19 @@
 #include "VideoRender.h"
+#include "ObjectGenerator.h"
+#include "SKEncoder.h"
 
 int ObjectVideoRender::Init(cv::Size finalSize, double cameraK, double E, double previewRatio)
 {
 	_cameraK = cameraK;
 	_stereoE = E;
+	_size = finalSize;
 	SKOpenGL::window::WindowSetting set;
-	set.width = finalSize.width * previewRatio;
-	set.height = finalSize.height * previewRatio;
+	set.width = _size.width * previewRatio;
+	set.height = _size.height * previewRatio;
 	set.renderMode = SKOpenGL::window::RenderMode::Window;
 	SKOpenGL::window::InitGlfw(set, "VideoRenderPreview");
 
-	_render_buffer.init(SKOpenGL::camera(), finalSize.width, finalSize.height);
+	_render_buffer.init(SKOpenGL::camera(), _size.width, _size.height);
 	std::string verShader =
 		"\
 #version 450 core \n\
@@ -96,6 +99,23 @@ int ObjectVideoRender::SaveImgs(std::string dir)
 		cv::cvtColor(_buffered_frame[i], bgr, cv::COLOR_RGB2BGR);
 		cv::imwrite(SKCommon::format("%s/%5d.png", dir.c_str(), i), bgr);
 	}
+	_buffered_frame.clear();
+	return 0;
+}
+
+int ObjectVideoRender::SaveVideos(std::string file_name)
+{
+	if (_buffered_frame.size() <= 0)
+		return -1;
+	SKEncoder ske;
+	ske.init(_buffered_frame.size(), _size, file_name, SKEncoder::FrameType::ABGR);
+	for (int i = 0; i < _buffered_frame.size(); i++)
+	{
+		cv::cuda::GpuMat rgb(_buffered_frame[i]), rgba;
+		cv::cuda::cvtColor(rgb,rgba, cv::COLOR_RGB2RGBA);
+		ske.encode(rgba.data, rgba.step);
+	}
+	ske.endEncode();
 	_buffered_frame.clear();
 	return 0;
 }
