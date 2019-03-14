@@ -244,23 +244,22 @@ int SKOpenGL::data::DeleteArrays(GLuint VAO)
 
 int SKOpenGL::data::LoadTexture(std::string file_path, GLuint &texture_id)
 {
-	cv::Mat img = cv::imread(file_path, cv::IMREAD_UNCHANGED);
+	cv::Mat img = cv::imread(file_path);
 	return LoadTexture(img, texture_id);
 }
 
 int SKOpenGL::data::LoadTexture(cv::Mat file, GLuint & texture_id)
 {
-	//cv::Mat img = file;
-	cv::Mat img;
-	cv::cvtColor(file, img, cv::COLOR_BGR2BGRA); //To make sure we upload data with 4x
-	// More info : https://www.khronos.org/opengl/wiki/Common_Mistakes#Texture_upload_and_pixel_reads
-	//cv::resize(img, img, cv::Size(img.cols / 4 * 4, img.rows / 4 * 4));
-
 	if (file.channels() != 3 || ((file.type() & CV_MAT_DEPTH_MASK) != CV_8U))
 	{
 		SKCommon::errorOutput(DEBUG_STRING + "Only 3 channel uchar BGR image is now supported.");
 		return -1;
 	}
+	cv::Mat img;
+	cv::cvtColor(file, img, cv::COLOR_BGR2BGRA); //To make sure we upload data with 4x
+	// More info : https://www.khronos.org/opengl/wiki/Common_Mistakes#Texture_upload_and_pixel_reads
+	//cv::resize(img, img, cv::Size(img.cols / 4 * 4, img.rows / 4 * 4));
+
 	glGenTextures(1, &texture_id);
 	glBindTexture(GL_TEXTURE_2D, texture_id);
 

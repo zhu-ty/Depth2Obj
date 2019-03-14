@@ -17,6 +17,8 @@
 
 int main(int argc, char* argv[])
 {
+
+
 	ObjectVideoRender ovr;
 	ovr.Init(cv::Size(1920, 1080));
 	
