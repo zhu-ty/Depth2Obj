@@ -23,7 +23,7 @@ Generate Object data & output
 
 #define OBJ_DEF_CAMERA_K 1000.0
 #define OBJ_DEF_PIECE_SIZE 2
-#define OBJ_DEF_DEPTH_SEG_COS 0.02
+#define OBJ_DEF_DEPTH_SEG_COS 0.05
 #define OBJ_DEF_MIN_HOLE_AREA 200
 #define OBJ_DEF_MIN_BLOC_AREA 200
 #define OBJ_DEF_DEPTH_DIV 1.0
