@@ -112,16 +112,17 @@ set(NVCUVID_LIB ${PROJECT_SOURCE_DIR}/SKEncoder/lib/x64/nvcuvid.lib)
 file (GLOB this_headers_h "./*.h")
 file (GLOB this_headers_hpp "./*.hpp")
 set (MY_HEADER_FILES
-${this_headers_h}
-${this_headers_hpp}
-${GENOBJ_HEADER}
-${SKENCODER_HEADER}
+	${this_headers_h}
+	${this_headers_hpp}
+	${GENOBJ_HEADER}
+	${SKENCODER_HEADER}
 )
 file (GLOB this_headers_cpp "./*.cpp")
 set (MY_SOURCE_FILES
-${this_headers_cpp}
-${GENOBJ_SOURCE}
-${SKENCODER_SOURCE}
+	OVConfig.ini
+	${this_headers_cpp}
+	${GENOBJ_SOURCE}
+	${SKENCODER_SOURCE}
 )
 source_group( "SHADER" FILES
     SKOpenGL.hpp
