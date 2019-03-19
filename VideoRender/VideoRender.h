@@ -25,10 +25,14 @@ public:
 
 	int Init(cv::Size finalSize,double cameraK = 1e3,double E = 2.7e4, double previewRatio = 0.5);
 	int RenderFrame(cv::Mat color, cv::Mat disparity, SKOpenGL::camera cam, SKOpenGL::callback &recall);
+	int RenderFrame(std::vector<cv::Mat> colors, std::vector<cv::Mat> disparities, SKOpenGL::camera cam, SKOpenGL::callback &recall);
 	int SaveImgs(std::string dir = "./VideoFrames");
 	int SaveVideos(std::string file_name = "./Video.h265");
 	int GetNewestFrame(cv::Mat &ret);
 private:
+
+	int _draw_layer(cv::Mat color, cv::Mat disparity, SKOpenGL::camera cam);
+
 	double _cameraK, _stereoE;
 	SKOpenGL::framebuffer _render_buffer;
 	std::vector<cv::Mat> _buffered_frame;

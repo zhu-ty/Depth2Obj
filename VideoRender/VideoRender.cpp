@@ -44,49 +44,24 @@ void main() {\n\
 
 int ObjectVideoRender::RenderFrame(cv::Mat color, cv::Mat disparity, SKOpenGL::camera cam, SKOpenGL::callback & recall)
 {
-	std::vector<float> ldata, udata;
-	std::vector<int> edata;
-	GLuint VAO, LVBO, UVBO, TEX, EBO;
-	ObjectGenerator og;
-	og.AddMeshDisparity(color, disparity, _stereoE, _cameraK);
-	og.OutputMixedData(ldata, udata, edata);
-	//og.OutputMixedObj("VideoFrames");
-
-	SKOpenGL::data::LoadTexture(color, TEX);
-	SKOpenGL::data::Upload3DPoints(LVBO, UVBO, ldata.data(), udata.data(), ldata.size() / 3);
-	SKOpenGL::data::GenerateVAO(VAO, LVBO, UVBO, (unsigned int*)edata.data(), edata.size(), EBO);
-
-	SKOpenGL::framebuffer::Layer lay;
-	lay.programID = _shaderID;
-	lay.colorAppen = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-	lay.colorCorre = glm::mat4();
-	lay.depOption = static_cast<SKOpenGL::framebuffer::DepthOption>(0);
-	lay.order = SKOpenGL::framebuffer::RenderOrder::Whatever;
-	lay.model = glm::mat4();
-	lay.texID = TEX;
-	lay.triCount = edata.size() / 3;
-	lay.glBufs.VaoID = VAO;
-	lay.glBufs.LVBO = LVBO;
-	lay.glBufs.UVBO = UVBO;
-	lay.glBufs.EboID = EBO;
-	lay.renDataType = SKOpenGL::framebuffer::RenderDataType::Element;
-
-	_render_buffer.Camera = cam;
 	_render_buffer.clearBuffer();
-	_render_buffer.drawLayers(std::vector<SKOpenGL::framebuffer::Layer>({ lay }));
-
+	this->_draw_layer(color, disparity, cam);
 	cv::Mat drawed;
 	_render_buffer.getTextureCPU_RGB(drawed);
 	_buffered_frame.push_back(drawed);
-
 	SKOpenGL::window::Render(_render_buffer.glTextureID, recall);
+	return 0;
+}
 
-	SKOpenGL::data::DeleteTexure(TEX);
-	SKOpenGL::data::DeleteArrays(VAO);
-	SKOpenGL::data::DeleteBuffer(EBO);
-	SKOpenGL::data::DeleteBuffer(LVBO);
-	SKOpenGL::data::DeleteBuffer(UVBO);
-
+int ObjectVideoRender::RenderFrame(std::vector<cv::Mat> colors, std::vector<cv::Mat> disparities, SKOpenGL::camera cam, SKOpenGL::callback & recall)
+{
+	_render_buffer.clearBuffer();
+	for (int i = 0; i < colors.size(); i++)
+		this->_draw_layer(colors[i], disparities[i], cam);
+	cv::Mat drawed;
+	_render_buffer.getTextureCPU_RGB(drawed);
+	_buffered_frame.push_back(drawed);
+	SKOpenGL::window::Render(_render_buffer.glTextureID, recall);
 	return 0;
 }
 
@@ -125,5 +100,45 @@ int ObjectVideoRender::GetNewestFrame(cv::Mat & ret)
 	if (_buffered_frame.size() <= 0)
 		return -1;
 	ret = _buffered_frame[_buffered_frame.size() - 1];
+	return 0;
+}
+
+int ObjectVideoRender::_draw_layer(cv::Mat color, cv::Mat disparity, SKOpenGL::camera cam)
+{
+	std::vector<float> ldata, udata;
+	std::vector<int> edata;
+	GLuint VAO, LVBO, UVBO, TEX, EBO;
+	ObjectGenerator og;
+	og.AddMeshDisparity(color, disparity, _stereoE, _cameraK);
+	og.OutputMixedData(ldata, udata, edata);
+	//og.OutputMixedObj("VideoFrames");
+
+	SKOpenGL::data::LoadTexture(color, TEX);
+	SKOpenGL::data::Upload3DPoints(LVBO, UVBO, ldata.data(), udata.data(), ldata.size() / 3);
+	SKOpenGL::data::GenerateVAO(VAO, LVBO, UVBO, (unsigned int*)edata.data(), edata.size(), EBO);
+
+	SKOpenGL::framebuffer::Layer lay;
+	lay.programID = _shaderID;
+	lay.colorAppen = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	lay.colorCorre = glm::mat4();
+	lay.depOption = static_cast<SKOpenGL::framebuffer::DepthOption>(0);
+	lay.order = SKOpenGL::framebuffer::RenderOrder::Whatever;
+	lay.model = glm::mat4();
+	lay.texID = TEX;
+	lay.triCount = edata.size() / 3;
+	lay.glBufs.VaoID = VAO;
+	lay.glBufs.LVBO = LVBO;
+	lay.glBufs.UVBO = UVBO;
+	lay.glBufs.EboID = EBO;
+	lay.renDataType = SKOpenGL::framebuffer::RenderDataType::Element;
+
+	_render_buffer.Camera = cam;
+	_render_buffer.drawLayers(std::vector<SKOpenGL::framebuffer::Layer>({ lay }));
+
+	SKOpenGL::data::DeleteTexure(TEX);
+	SKOpenGL::data::DeleteArrays(VAO);
+	SKOpenGL::data::DeleteBuffer(EBO);
+	SKOpenGL::data::DeleteBuffer(LVBO);
+	SKOpenGL::data::DeleteBuffer(UVBO);
 	return 0;
 }

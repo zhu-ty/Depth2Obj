@@ -40,19 +40,32 @@ std::vector<std::string> CollectFiles(std::string dir, std::vector<std::string> 
 int main(int argc, char* argv[])
 {
 	INIReader reader("OVConfig.ini");
-	
-	std::string color_dir = reader.Get("All", "Color", "./color");
-	std::string dis_dir = reader.Get("All", "Disparity", "./dis");
+
+	int count = reader.GetInteger("All", "Count", 1);
 	std::string output_name = reader.Get("All", "Output", "Video.h265");
 
-	std::vector<std::string> color_names, dis_names;
-	color_names = CollectFiles(color_dir, std::vector<std::string>({ ".jpg", ".png" ,".jpeg" }));
-	dis_names = CollectFiles(dis_dir, std::vector<std::string>({ ".tiff" }));
+	std::vector<std::vector<std::string>> colorName(count), disName(count);
+	int mins = 999999;
 
-	if (dis_names.size() == 1)
+	for (int i = 0; i < count; i++)
 	{
-		color_names.resize(100, color_names[0]);
-		dis_names.resize(100, dis_names[0]);
+		std::string cDir = reader.Get(SKCommon::format("Pair_%d", i), "Color", "./color");
+		std::string dDir = reader.Get(SKCommon::format("Pair_%d", i), "Disparity", "./color");
+		colorName[i] = CollectFiles(cDir, std::vector<std::string>({ ".jpg", ".png" ,".jpeg" }));
+		disName[i] = CollectFiles(dDir, std::vector<std::string>({ ".tiff" }));
+		if (colorName[i].size() != 1 && colorName[i].size() < mins)
+			mins = colorName[i].size();
+		if (disName[i].size() != 1 && disName[i].size() < mins)
+			mins = disName[i].size();
+	}
+	mins = (mins == 999999) ? 100 : mins;
+
+	for (int i = 0; i < count; i++)
+	{
+		if (colorName[i].size() == 1)
+			colorName[i].resize(mins, colorName[i][0]);
+		if (disName[i].size() == 1)
+			disName[i].resize(mins, disName[i][0]);
 	}
 
 	ObjectVideoRender ovr;
@@ -60,17 +73,18 @@ int main(int argc, char* argv[])
 	
 	SKOpenGL::camera cam;
 	SKOpenGL::callback recall;
-	
-	cv::Mat c, dis;
-	//c = cv::imread("./color.png");
-	//dis = cv::imread("./disparity.tiff", cv::IMREAD_UNCHANGED);
 
-	for (int i = 0; i < dis_names.size(); i++)
+
+	for (int i = 0; i < mins; i++)
 	{
-		c = cv::imread(color_names[i]);
-		dis = cv::imread(dis_names[i], cv::IMREAD_UNCHANGED);
-		ovr.RenderFrame(c, dis, cam, recall);
-		//cam.ProcessMouseMovement(-2, 0);
+		std::vector<cv::Mat> cs(count), diss(count);
+		for (int j = 0; j < count; j++)
+		{
+			cs[j] = cv::imread(colorName[j][i]);
+			diss[j] = cv::imread(disName[j][i], cv::IMREAD_UNCHANGED);
+		}
+
+		ovr.RenderFrame(cs, diss, cam, recall);
 		if(i < 4)
 			cam.ProcessKeyboard(SKOpenGL::camera::FORWARD, 30);
 		if ((((i / 7) % 4 + 1) / 2) % 2 == 0)
