@@ -78,6 +78,12 @@ namespace SKOpenGL {
 
 		static bool Mat_CV2GLM(const cv::Mat& cvmat, glm::mat4* glmmat);
 		static bool Mat_GLM2CV(const glm::mat4& glmmat, cv::Mat* cvmat);
+
+		static glm::vec3 getRandomColor();
+	private:
+		static std::random_device rd;
+		static std::default_random_engine g;
+		static std::_Binder<std::_Unforced, std::uniform_int_distribution<int>, std::default_random_engine&> b;
 	};
 
 	class callback {

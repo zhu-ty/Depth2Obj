@@ -355,6 +355,19 @@ bool SKOpenGL::data::Mat_GLM2CV(const glm::mat4 & glmmat, cv::Mat * cvmat)
 	return true;
 }
 
+glm::vec3 SKOpenGL::data::getRandomColor()
+{
+	glm::vec3 ret;
+	ret.r = b() / 1000000.0f;
+	ret.g = b() / 1000000.0f;
+	ret.b = b() / 1000000.0f;
+	return ret;
+}
+std::random_device SKOpenGL::data::rd;
+std::default_random_engine SKOpenGL::data::g = std::default_random_engine(rd());
+std::_Binder<std::_Unforced, std::uniform_int_distribution<int>, std::default_random_engine&> SKOpenGL::data::b = 
+	std::bind(std::uniform_int_distribution<int>(0, 1000000), g);
+
 inline void SKOpenGL::callback::clear_some()
 {
 	//pressX = 0;
@@ -548,7 +561,7 @@ int SKOpenGL::window::Render(GLuint textureID, callback &ret)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	// Clear the screen
-	glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Use our shader
