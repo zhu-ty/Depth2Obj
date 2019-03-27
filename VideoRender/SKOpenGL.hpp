@@ -132,9 +132,11 @@ namespace SKOpenGL {
 			int width;
 			int height;
 			RenderMode renderMode;
+			bool enableMouse;
 			WindowSetting() :
 				width(1280), height(720),
-				renderMode(RenderMode::Window){}
+				renderMode(RenderMode::Window),
+				enableMouse(true){}
 		};
 		static int InitGlfw(WindowSetting setting, std::string name = "SKOpenGL Window");
 		static GLFWwindow* GetWindowPtr() { return windowPtr; }

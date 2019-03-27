@@ -357,12 +357,12 @@ bool SKOpenGL::data::Mat_GLM2CV(const glm::mat4 & glmmat, cv::Mat * cvmat)
 
 inline void SKOpenGL::callback::clear_some()
 {
-	pressX = 0;
-	pressY = 0;
-	releaseX = 0;
-	releaseY = 0;
-	currentX = 0;
-	currentY = 0;
+	//pressX = 0;
+	//pressY = 0;
+	//releaseX = 0;
+	//releaseY = 0;
+	//currentX = 0;
+	//currentY = 0;
 
 	xoffset = 0;
 	yoffset = 0;
@@ -434,9 +434,8 @@ int SKOpenGL::window::InitGlfw(WindowSetting setting, std::string name)
 	}
 	glfwMakeContextCurrent(windowPtr);
 
-	//Cursor setting please do it out side, here is some sample:
-	//// Ensure we can capture the escape key being pressed below
-	//glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	if(setting.enableMouse == false)
+		glfwSetInputMode(windowPtr, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	//// set control callback function
 	glfwSetMouseButtonCallback(windowPtr, mouse_button_callback);
 	glfwSetScrollCallback(windowPtr, mouse_scroll_callback);
@@ -461,12 +460,12 @@ int SKOpenGL::window::InitGlfw(WindowSetting setting, std::string name)
 	};
 	// The fullscreen quad's FBO
 	static const GLfloat g_quad_uv_buffer_data[] = {
-		0.0f, 1.0f,
-		1.0f, 1.0f,
+		0.0f,  0.0f,
 		1.0f,  0.0f,
-		1.0f,  0.0f,
-		0.0f, 0.0f,
-		0.0f,  1.0f
+		1.0f,  1.0f,
+		1.0f,  1.0f,
+		0.0f,  1.0f,
+		0.0f,  0.0f
 	};
 	// bind
 	glGenVertexArrays(1, &glWindowVAOID);
@@ -911,9 +910,10 @@ int SKOpenGL::framebuffer::getTextureCPU_RGB(cv::Mat & rgb)
 	glBindFramebuffer(GL_FRAMEBUFFER, glFboID);
 	glBindRenderbuffer(GL_RENDERBUFFER, glDboID);
 	char* pixels = new char[width * height * 3];
-	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels); // Remeber that this is fliped img
 	cv::Mat img(cv::Size(width, height), CV_8UC3, pixels);
-	rgb = img.clone();
+	//rgb = img.clone();
+	cv::flip(img, rgb, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	return 0;

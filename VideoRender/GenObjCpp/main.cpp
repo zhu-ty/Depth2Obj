@@ -26,12 +26,12 @@ int main(int argc, char* argv[])
 	{
 		printf("Input Format:\nGenObjCpp input.txt\n");
 		printf("input.txt:\n[num] [PieceSize] [DepthSegCos] [K] [E]\n[Color] [Disparity]\n");
-		printf("输入解释（中文）：\n输入一个文本文件，文件第一行为需要合并的Disparity/color 图像数量，切分大小（每几个点切一个三角形），深度阈值Cos，相机的焦距K，深度变换数E，此后每行：\n");
-		printf("[纹理图]\n[视差图]（必须为32bit float）");
+		printf("输入解释（中文）：\n输入一个文本文件，文件第一行为需要合并的Disparity/color 图像数量，切分大小（每几个点切一个三角形），，相机的焦距K，深度变换数E，此后每行：\n");
+		printf("[纹理图] [视差图]（必须为32bit float）[深度阈值Cos]");
 		FILE *out = fopen("SampleInput.txt", "w");
-		fprintf(out, "2 2 0.05 1672.1 27000\n");
-		fprintf(out, "Icolor.jpg Idisparity.tiff\n");
-		fprintf(out, "Icolor2.jpg Idisparity2.tiff\n");
+		fprintf(out, "2 2 1672.1 27000\n");
+		fprintf(out, "Icolor.jpg Idisparity.tiff 0.05\n");
+		fprintf(out, "Icolor2.jpg Idisparity2.tiff 0.02\n");
 		return 0;
 	}
 	else if (argc >= 2)
@@ -41,12 +41,12 @@ int main(int argc, char* argv[])
 	FILE *in = fopen(argv1.c_str(), "r");
 	int count, PieS;
 	double DepSeg, K, E;
-	fscanf(in, "%d %d %lf %lf %lf\n", &count,&PieS, &DepSeg, &K, &E);
+	fscanf(in, "%d %d %lf %lf\n", &count,&PieS, &K, &E);
 	ObjectGenerator OG;
 	for (int i = 0; i < count; i++)
 	{
 		char color[1000] = { 0 }, dis_[1000] = { 0 };
-		fscanf(in, "%s %s\n", color, dis_);
+		fscanf(in, "%s %s %lf\n", color, dis_, &DepSeg);
 
 		cv::Mat c, dis;
 		c = cv::imread(color);

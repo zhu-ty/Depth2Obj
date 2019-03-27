@@ -357,7 +357,7 @@ int ObjectGenerator::OutputMixedData(std::vector<float> &loc_data, std::vector<f
 		for (int i = 0; i < meshs[meshID].meshPT.size(); i++)
 		{
 			loc_data.push_back((double)meshs[meshID].meshPT[i].renderPos.x);
-			loc_data.push_back((double)meshs[meshID].meshPT[i].renderPos.y);
+			loc_data.push_back(-(double)meshs[meshID].meshPT[i].renderPos.y);
 			loc_data.push_back(-(double)meshs[meshID].meshPT[i].renderPos.z);
 			uv_data.push_back(meshs[meshID].meshPT[i].imgPos.x / (double)meshs[meshID].w);
 			uv_data.push_back(meshs[meshID].meshPT[i].imgPos.y / (double)meshs[meshID].h);
